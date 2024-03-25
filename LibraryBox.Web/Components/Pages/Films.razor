@@ -35,8 +35,8 @@
 		if (User is not null && List is not null)
 		{
 			var listGrain = GrainFactory.GetGrain<ILetterboxdList>($"{User}/{List}");
-			ListTitle = (await listGrain.GetTitle()) ?? listGrain.GetPrimaryKeyString().ToLower();
 			FilmList = await listGrain.GetFilms(refresh: false);
+			ListTitle = (await listGrain.GetTitle()) ?? listGrain.GetPrimaryKeyString().ToLower();
 			Availability = (await listGrain.GetFilmAvailability("www.richlandlibrary.com"))
 			.ToDictionary(a => (a.filmTitle, a.filmYear), a => a.formats);
 			ListUrl = $"{LetterboxdBaseUrl}/{User}/list/{List}";
