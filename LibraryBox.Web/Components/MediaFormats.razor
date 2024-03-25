@@ -1,0 +1,26 @@
+﻿@code {
+	[Parameter]
+	public MediaFormat[] Formats { get; set; } = [];
+
+	string GetIcon(MediaFormat format)
+	{
+		return format switch
+		{
+			MediaFormat.Dvd => "/img/dvd.svg",
+			MediaFormat.Bluray => "/img/bluray.svg",
+		};
+	}
+}
+
+@foreach (var fmt in Formats.Order())
+{
+	switch (fmt)
+	{
+		case MediaFormat.Dvd:
+			<img class="icon-dvd" src="/img/dvd.svg">
+			break;
+		case MediaFormat.Bluray:
+			<img class="icon-bluray" src="/img/bluray.svg">
+			break;
+	}
+}
