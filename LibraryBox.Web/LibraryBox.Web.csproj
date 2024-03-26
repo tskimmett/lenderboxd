@@ -7,6 +7,8 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.10.4" />
+    <PackageReference Include="Aspire.Azure.Data.Tables" Version="8.0.0-preview.4.24156.9" />
+    <PackageReference Include="Aspire.Azure.Storage.Queues" Version="8.0.0-preview.4.24156.9" />
     <PackageReference Include="Microsoft.Orleans.Clustering.AzureStorage" Version="8.0.0" />
     <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="8.0.0" />
     <PackageReference Include="Microsoft.Orleans.Server" Version="8.0.0" />
@@ -17,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../LibraryBox/LibraryBox.csproj" />
+    <ProjectReference Include="..\LibraryBox.ServiceDefaults\LibraryBox.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

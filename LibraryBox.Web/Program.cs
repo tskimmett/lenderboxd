@@ -5,9 +5,18 @@ using Microsoft.AspNetCore.Components.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddAzureTableService("tables");
+builder.AddAzureQueueService("queues");
 builder.Host.UseOrleans(siloBuilder =>
 {
+    siloBuilder.UseLocalhostClustering();
+    if (builder.Environment.IsDevelopment())
+    {
+        siloBuilder.ConfigureEndpoints(Random.Shared.Next(10_000, 50_000), Random.Shared.Next(10_000, 50_000));
+    }
 });
+
+builder.AddServiceDefaults();
 
 // Add services to the container.
 builder.Services.AddHttpContextAccessor();
