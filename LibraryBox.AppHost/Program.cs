@@ -1,36 +1,16 @@
-using Microsoft.Extensions.Hosting;
+﻿var builder = DistributedApplication.CreateBuilder(args);
 
-var builder = DistributedApplication.CreateBuilder(args);
+var azStorage = builder.AddAzureStorage("storage").RunAsEmulator();
+var tables = azStorage.AddTables("tables");
+var queues = azStorage.AddQueues("queues");
+var orleans = builder.AddOrleans("library-box-cluster")
+	  .WithClustering(tables)
+	  .WithGrainStorage("librarybox", tables)
+	  .WithStreaming(queues)
+	  .WithGrainStorage("PubSubStore", tables);
 
-// var storage = builder.AddAzureStorage("storage");
+builder.AddProject<Projects.LibraryBox_Web>("librarybox-web")
+	 .WithReference(orleans);
+//  .WithReplicas(1);
 
-// if (builder.Environment.IsDevelopment())
-// {
-//     storage.UseEmulator();
-// }
-// else
-// {
-//     builder.AddAzureProvisioning();
-// }
-
-// var clusteringTable = storage.AddTables("clustering");
-// var grainStorage = storage.AddBlobs("grainstate");
-
-// var orleans = builder.AddOrleans("my-app")
-//     .WithClustering(clusteringTable)
-//     .WithGrainStorage("Default", grainStorage);
-
-// // For local development, instead of using the emulator,
-// // one can use the in memory provider from Orleans:
-// // var orleans = builder.AddOrleans("my-app")
-// //     .WithDevelopmentClustering()
-// //     .WithMemoryGrainStorage("Default");
-
-// builder.AddProject<Projects.LibraryBox_Web>("silo")
-//        .WithReference(orleans);
-
-builder.AddProject<Projects.LibraryBox_Web>("silo");
-
-using var app = builder.Build();
-
-await app.RunAsync();
+builder.Build().Run();

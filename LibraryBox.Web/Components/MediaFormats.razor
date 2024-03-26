@@ -8,6 +8,7 @@
 		{
 			MediaFormat.Dvd => "/img/dvd.svg",
 			MediaFormat.Bluray => "/img/bluray.svg",
+			_ => throw new InvalidOperationException()
 		};
 	}
 }

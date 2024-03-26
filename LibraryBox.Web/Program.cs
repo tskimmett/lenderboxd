@@ -1,70 +1,13 @@
-using System.Threading.Channels;
-using Azure.Identity;
 using LibraryBox;
 using LibraryBox.Web;
 using LibraryBox.Web.Components;
 using Microsoft.AspNetCore.Components.Web;
-using Orleans.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// orleans
+builder.Host.UseOrleans(siloBuilder =>
 {
-    builder.Host.UseOrleans(siloBuilder =>
-    {
-        var tableConnectionString = builder.Configuration["AzureTableConnectionString"]!;
-        var blobConnectionString = builder.Configuration["AzureBlobConnectionString"]!;
-        var queueConnectionString = builder.Configuration["AzureQueueConnectionString"]!;
-        var credential = new DefaultAzureCredential();
-
-        siloBuilder
-            .UseAzureStorageClustering(options =>
-            {
-                options.ConfigureTableServiceClient(tableConnectionString);
-            })
-            .AddAzureTableGrainStorageAsDefault(options =>
-            {
-                options.ConfigureTableServiceClient(tableConnectionString);
-                options.TableName = "LibraryBoxGrains";
-            })
-            .AddAzureTableGrainStorage("PubSubStore", options =>
-            {
-                options.ConfigureTableServiceClient(tableConnectionString);
-                options.TableName = "LibraryBoxPubSub";
-            })
-            .AddAzureBlobGrainStorage("blob", options =>
-            {
-                options.ConfigureBlobServiceClient(blobConnectionString);
-                options.ContainerName = "libraryboxgrains";
-            })
-            .AddAzureQueueStreams("LibraryBox", optionsBuilder =>
-            {
-                optionsBuilder.Configure((options) =>
-                {
-                    options.ConfigureQueueServiceClient(queueConnectionString);
-                });
-            })
-            .Configure<ClusterOptions>(options =>
-            {
-                options.ClusterId = "LibraryBox";
-                options.ServiceId = "LibraryBox";
-            });
-    });
-}
-
-// identity
-{
-    // builder.Services.AddDefaultIdentity<IdentityUser>()
-    //     .AddAzureTableStores<ApplicationDbContext>(() => new IdentityConfiguration()
-    //     {
-    //         StorageConnectionString = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:StorageConnectionString").Value,
-    //         TablePrefix = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:TablePrefix").Value,
-    //         IndexTableName = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:IndexTableName").Value,
-    //         RoleTableName = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:RoleTableName").Value,
-    //         UserTableName = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:UserTableName").Value
-    //     })
-    //     .CreateAzureTablesIfNotExists<ApplicationDbContext>();
-}
+});
 
 // Add services to the container.
 builder.Services.AddHttpContextAccessor();
@@ -97,7 +40,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAntiforgery();
 
-app.MapRazorComponents<LibraryBox.Web.Components.App>();
+app.MapRazorComponents<App>();
 app.MapControllers();
 
 app.MapGet("/film-list/{user}/{list}/events", async (
