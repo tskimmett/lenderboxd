@@ -31,4 +31,9 @@
     <Folder Include="Controllers/" />
     <Folder Include="wwwroot/img/" />
   </ItemGroup>
+
+  <Target Name="ZipPublishOutput" AfterTargets="Publish">
+    <Delete Files="$(ProjectDir)\..\app.zip" />
+    <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(ProjectDir)\..\app.zip" />
+</Target>
 </Project>
