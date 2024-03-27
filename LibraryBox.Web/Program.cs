@@ -11,34 +11,35 @@ var builder = WebApplication.CreateBuilder(args);
 {
     builder.Host.UseOrleans(siloBuilder =>
     {
-        var storageConnectionString = builder.Configuration["AZURE_STORAGE_CONNECTION_STRING"]!;
+        var tableEndpoint = new Uri(builder.Configuration["AZURE_TABLE_ENDPOINT"]!);
+        var queueEndpoint = new Uri(builder.Configuration["AZURE_QUEUE_ENDPOINT"]!);
         var credential = new DefaultAzureCredential();
 
         siloBuilder
             .UseAzureStorageClustering(options =>
             {
-                options.ConfigureTableServiceClient(storageConnectionString);
+                options.ConfigureTableServiceClient(tableEndpoint, credential);
             })
             .AddAzureTableGrainStorageAsDefault(options =>
             {
-                options.ConfigureTableServiceClient(storageConnectionString);
+                options.ConfigureTableServiceClient(tableEndpoint, credential);
                 options.TableName = "LibraryBoxGrains";
             })
             .AddAzureTableGrainStorage("PubSubStore", options =>
             {
-                options.ConfigureTableServiceClient(storageConnectionString);
+                options.ConfigureTableServiceClient(tableEndpoint, credential);
                 options.TableName = "LibraryBoxPubSub";
             })
-            .AddAzureBlobGrainStorage("blob", options =>
-            {
-                options.ConfigureBlobServiceClient(storageConnectionString);
-                options.ContainerName = "libraryboxgrains";
-            })
+            // .AddAzureBlobGrainStorage("blob", options =>
+            // {
+            //     options.ConfigureBlobServiceClient(tableEndpoint, credential);
+            //     options.ContainerName = "libraryboxgrains";
+            // })
             .AddAzureQueueStreams("LibraryBox", optionsBuilder =>
             {
                 optionsBuilder.Configure((options) =>
                 {
-                    options.ConfigureQueueServiceClient(storageConnectionString);
+                    options.ConfigureQueueServiceClient(queueEndpoint, credential);
 
                 });
             })
@@ -48,20 +49,6 @@ var builder = WebApplication.CreateBuilder(args);
                 options.ServiceId = "LibraryBox";
             });
     });
-}
-
-// identity
-{
-    // builder.Services.AddDefaultIdentity<IdentityUser>()
-    //     .AddAzureTableStores<ApplicationDbContext>(() => new IdentityConfiguration()
-    //     {
-    //         StorageConnectionString = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:StorageConnectionString").Value,
-    //         TablePrefix = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:TablePrefix").Value,
-    //         IndexTableName = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:IndexTableName").Value,
-    //         RoleTableName = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:RoleTableName").Value,
-    //         UserTableName = builder.Configuration.GetSection("IdentityAzureTable:IdentityConfiguration:UserTableName").Value
-    //     })
-    //     .CreateAzureTablesIfNotExists<ApplicationDbContext>();
 }
 
 // Add services to the container.
@@ -89,13 +76,12 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpLogging();
 app.UseHttpsRedirection();
 
-// app.UseMiddleware<ExtensionlessJsMiddleware>();
 app.UseStaticFiles();
 
 app.UseRouting();
 app.UseAntiforgery();
 
-app.MapRazorComponents<LibraryBox.Web.Components.App>();
+app.MapRazorComponents<App>();
 app.MapControllers();
 
 app.MapGet("/film-list/{user}/{list}/events", async (
