@@ -3,11 +3,12 @@
 var azStorage = builder.AddAzureStorage("storage").RunAsEmulator();
 var tables = azStorage.AddTables("tables");
 var queues = azStorage.AddQueues("queues");
-var orleans = builder.AddOrleans("library-box-cluster")
-	  .WithClustering(tables)
-	  .WithGrainStorage("librarybox", tables)
-	  .WithStreaming(queues)
-	  .WithGrainStorage("PubSubStore", tables);
+var orleans = builder.AddOrleans("librarybox-cluster")
+		.WithClustering(tables)
+		.WithGrainStorage("Default", tables)
+		// .WithMemoryStreaming("streams")
+		.WithStreaming(queues)
+		.WithGrainStorage("PubSubStore", tables);
 
 builder.AddProject<Projects.LibraryBox_Web>("librarybox-web")
 	 .WithReference(orleans);
