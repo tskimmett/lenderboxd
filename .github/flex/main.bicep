@@ -71,5 +71,6 @@ module siloModule 'app-service.bicep' = {
     appInsightsConnectionString: logsModule.outputs.appInsightsConnectionString
     appInsightsInstrumentationKey: logsModule.outputs.appInsightsInstrumentationKey
     storageConnectionString: storageModule.outputs.connectionString
+    storageConnectionStringStaging: storageModule.outputs.connectionString
   }
 }

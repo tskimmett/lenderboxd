@@ -10,7 +10,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2021-08-01' = {
   }
 }
 
-var key = listKeys(storage.name, storage.apiVersion).keys[0].value
+var key = storage.listKeys().keys[0].value
 var protocol = 'DefaultEndpointsProtocol=https'
 var accountBits = 'AccountName=${storage.name};AccountKey=${key}'
 var endpointSuffix = 'EndpointSuffix=${environment().suffixes.storage}'

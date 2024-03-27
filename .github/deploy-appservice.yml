@@ -48,7 +48,7 @@ jobs:
     - name: Staging deploy
       run: |
         az webapp deploy --name ${{ env.UNIQUE_APP_NAME }} \
-          --slot ${{ env.UNIQUE_APP_NAME }}stg \
+          --slot ${{ env.UNIQUE_APP_NAME }}-staging \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP_NAME  }} \
           --clean true --restart true \
           --type zip --src-path app.zip --debug

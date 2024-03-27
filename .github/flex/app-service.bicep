@@ -5,6 +5,7 @@ param stagingSubnetId string
 param appInsightsInstrumentationKey string
 param appInsightsConnectionString string
 param storageConnectionString string
+param storageConnectionStringStaging string
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-03-01' = {
   name: '${appName}-plan'
@@ -38,7 +39,7 @@ resource appService 'Microsoft.Web/sites@2021-03-01' = {
           value: appInsightsConnectionString
         }
         {
-          name: 'ORLEANS_AZURE_STORAGE_CONNECTION_STRING'
+          name: 'AZURE_STORAGE_CONNECTION_STRING'
           value: storageConnectionString
         }
         {
@@ -52,7 +53,7 @@ resource appService 'Microsoft.Web/sites@2021-03-01' = {
 }
 
 resource stagingSlot 'Microsoft.Web/sites/slots@2022-03-01' = {
-  name: '${appName}-stg'
+  name: '${appName}-staging'
   location: location
   properties: {
     serverFarmId: appServicePlan.id
@@ -72,8 +73,8 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2022-03-01' = {
           value: appInsightsConnectionString
         }
         {
-          name: 'ORLEANS_AZURE_STORAGE_CONNECTION_STRING'
-          value: storageConnectionString
+          name: 'AZURE_STORAGE_CONNECTION_STRING'
+          value: storageConnectionStringStaging
         }
         {
           name: 'ORLEANS_CLUSTER_ID'

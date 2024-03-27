@@ -11,36 +11,35 @@ var builder = WebApplication.CreateBuilder(args);
 {
     builder.Host.UseOrleans(siloBuilder =>
     {
-        var tableConnectionString = builder.Configuration["AzureTableConnectionString"]!;
-        var blobConnectionString = builder.Configuration["AzureBlobConnectionString"]!;
-        var queueConnectionString = builder.Configuration["AzureQueueConnectionString"]!;
+        var storageConnectionString = builder.Configuration["AZURE_STORAGE_CONNECTION_STRING"]!;
         var credential = new DefaultAzureCredential();
 
         siloBuilder
             .UseAzureStorageClustering(options =>
             {
-                options.ConfigureTableServiceClient(tableConnectionString);
+                options.ConfigureTableServiceClient(storageConnectionString);
             })
             .AddAzureTableGrainStorageAsDefault(options =>
             {
-                options.ConfigureTableServiceClient(tableConnectionString);
+                options.ConfigureTableServiceClient(storageConnectionString);
                 options.TableName = "LibraryBoxGrains";
             })
             .AddAzureTableGrainStorage("PubSubStore", options =>
             {
-                options.ConfigureTableServiceClient(tableConnectionString);
+                options.ConfigureTableServiceClient(storageConnectionString);
                 options.TableName = "LibraryBoxPubSub";
             })
             .AddAzureBlobGrainStorage("blob", options =>
             {
-                options.ConfigureBlobServiceClient(blobConnectionString);
+                options.ConfigureBlobServiceClient(storageConnectionString);
                 options.ContainerName = "libraryboxgrains";
             })
             .AddAzureQueueStreams("LibraryBox", optionsBuilder =>
             {
                 optionsBuilder.Configure((options) =>
                 {
-                    options.ConfigureQueueServiceClient(queueConnectionString);
+                    options.ConfigureQueueServiceClient(storageConnectionString);
+
                 });
             })
             .Configure<ClusterOptions>(options =>
