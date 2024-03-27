@@ -47,7 +47,7 @@ resource appService 'Microsoft.Web/sites@2021-03-01' = {
           value: 'Default'
         }
       ]
-      alwaysOn: true
+      // alwaysOn: true
     }
   }
 }
@@ -82,7 +82,7 @@ resource stagingSlot 'Microsoft.Web/sites/slots@2022-03-01' = {
           value: 'Staging'
         }
       ]
-      alwaysOn: true
+      // alwaysOn: true
     }
   }
 }
