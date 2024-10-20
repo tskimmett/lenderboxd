@@ -128,17 +128,30 @@ public class LetterboxdList : Grain, ILetterboxdList
 			.ToArray();
 	}
 
+	readonly Dictionary<string, List<int>> filmIndex = [];
 	async Task HandleSearchResult(IList<SequentialItem<CatalogSearchResult>> results)
 	{
 		List<Task> notifications = [];
-		Dictionary<string, nint> filmIndex = [];
-		_state.State.Films.ForEach((ref Film film, nint idx) => filmIndex[film.Title] = idx);
+
+		if (filmIndex.Count == 0)
+		{
+			for (int idx = 0; idx < _state.State.Films.Length; idx++)
+			{
+				var film = _state.State.Films[idx];
+				if (!filmIndex.ContainsKey(film.Title))
+					filmIndex[film.Title] = [idx];
+				else
+					filmIndex[film.Title].Add(idx);
+			}
+		}
+
 		foreach (var result in results)
 		{
-			if (filmIndex.TryGetValue(result.Item.FilmTitle, out var resultIdx))
+			if (filmIndex.TryGetValue(result.Item.FilmTitle, out var indexes))
 			{
 				_logger.LogDebug("{List} handling result for relevant film: {Film}", this, result.Item.FilmTitle);
-				_state.State.AvailabilityResults![resultIdx] = result.Item.Formats;
+				foreach(var resultIdx in indexes)
+					_state.State.AvailabilityResults![resultIdx] = result.Item.Formats;
 				notifications.Add(_subsManager.Notify(observer => observer.FilmAvailabilityReady(new(result.Item.FilmTitle, result.Item.Formats))));
 			}
 		}
