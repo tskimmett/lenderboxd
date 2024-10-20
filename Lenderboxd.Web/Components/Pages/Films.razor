@@ -1,0 +1,167 @@
+﻿@page "/films/{user?}/{list?}"
+@page "/{user?}/{list?}"
+@using System.Diagnostics;
+@inject NavigationManager NavigationManager;
+@inject IGrainFactory GrainFactory;
+@inject IHttpContextAccessor Ctx;
+@inject ILogger<Films> Logger;
+
+@code
+{
+	public const string LetterboxdBaseUrl = "https://letterboxd.com";
+	public const string LetterboxdListPattern = "/{user}/list/{list}/{**rest}";
+
+	[SupplyParameterFromForm]
+	public string? ListUrl { get; set; }
+
+	[Parameter]
+	public string? User { get; set; }
+
+	[Parameter]
+	public string? List { get; set; }
+
+	IEnumerable<Film> FilmList { get; set; } = [];
+	Dictionary<(string, uint?), MediaFormat[]?> Availability { get; set; } = [];
+
+	protected override async Task OnInitializedAsync()
+	{
+		if (ListUrl?.StartsWith(LetterboxdBaseUrl) == true && Uri.TryCreate(ListUrl, UriKind.Absolute, out var uri))
+		{
+			if (RouteMatcher.TryMatch(LetterboxdListPattern, uri.AbsolutePath, out var values))
+			{
+				User = values["user"]!.ToString()!.ToLower();
+				List = values["list"]!.ToString()!.ToLower();
+			}
+		}
+
+		if (User is not null && List is not null)
+		{
+			var listGrain = GrainFactory.GetGrain<ILetterboxdList>($"{User}/{List}");
+			var timer = Stopwatch.StartNew();
+			FilmList = await listGrain.GetFilms(refresh: false);
+			Logger.LogDebug("Took {time} to fetch film list", timer.Elapsed);
+			timer.Restart();
+			ListTitle = (await listGrain.GetTitle()) ?? listGrain.GetPrimaryKeyString().ToLower();
+			Logger.LogDebug("Took {time} to fetch film title", timer.Elapsed);
+			timer.Restart();
+			Availability = (await listGrain.GetFilmAvailability("www.richlandlibrary.com"))
+			.ToDictionary(a => (a.filmTitle, a.filmYear), a => a.formats);
+			Logger.LogDebug("Took {time} to fetch film availability", timer.Elapsed);
+			ListUrl = $"{LetterboxdBaseUrl}/{User}/list/{List}";
+
+			UpdateClientHistory();
+		}
+
+		await base.OnInitializedAsync();
+	}
+
+	bool HasPendingAvailability => Availability.Values.Any(v => v is null);
+
+	string ListTitle { get; set; } = "";
+
+	bool HasDuplicate => FilmList.DistinctBy(f => f.Title).Count() < FilmList.Count(); void
+
+	UpdateClientHistory()
+	{
+		var newUrl = $"/films/{User}/{List}";
+		if (newUrl != Ctx.HttpContext?.Request?.GetTypedHeaders()?.Referer?.AbsolutePath)
+			Ctx.HttpContext?.Response.Headers.Add("Hx-Push-Url", newUrl);
+	}
+
+	MediaFormat[] GetFormats(string filmTitle, uint? year)
+	{
+		try
+		{
+			return Availability[(filmTitle, year)] ?? [];
+		}
+		catch (Exception)
+		{
+			Logger.LogWarning(" Availability: {0}", string.Join(';', Availability.Keys));
+			throw;
+		}
+	}
+}
+
+<main>
+	@if (User is null && List is null)
+	{
+		<PageTitle>List Search</PageTitle>
+		<h1>Welcome to Lenderboxd</h1>
+		<p>
+		This is a tool for cross-referencing
+		<a href="https://letterboxd.com/dave/list/official-top-250-narrative-feature-films/" target="_blank">Letterboxd
+			lists</a>
+		with the
+		<a href="https://www.richlandlibrary.com/" target="_blank">Richland County Public Library</a> catalog.
+		<br>
+		<br>
+		Simply paste the link to a Letterboxd list in the input below and wait for the results to come in. Feel free to
+		leave the page for long lists and come back later to see the results.
+	</p>
+	}
+	else
+	{
+		if (!FilmList.Any())
+		{
+			<p>No list was found at the specified url.</p>
+		}
+		else
+		{
+			<PageTitle>List @ListTitle</PageTitle>
+
+			<h2>@ListTitle</h2>
+
+			@if (HasDuplicate)
+			{
+				<p class="notice">
+					Availability results may not be accurate for films with the same title.
+				</p>
+			}
+
+			<table>
+				<thead>
+					<tr>
+						<th>Title</th>
+						<th>Year</th>
+						<th style="text-align: center;">Available?</th>
+					</tr>
+				</thead>
+				<tbody hx-ext="sse" sse-close="@ServerSentEvent.Close"
+					sse-connect="@(HasPendingAvailability ? $"/film-list/{User}/{List}/events" : "")">
+					@foreach (var film in FilmList)
+					{
+						<tr>
+							<td>@film.Title</td>
+							<td>@film.ReleaseYear</td>
+							<td style="text-align: center;">
+								<Flex Height="29px" sse-swap="@film.Title.ToSSE()">
+									@if (Availability.GetValueOrDefault((film.Title, film.ReleaseYear)) is null)
+									{
+										<Loader></Loader>
+									}
+									else
+									{
+										<MediaFormats Formats="@GetFormats(film.Title, film.ReleaseYear)"></MediaFormats>
+									}
+								</Flex>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	}
+</main>
+
+<div class="drawer">
+	<form id="searchForm" hx-post="/films" hx-target="body" hx-swap="innerHtml show:window:top" style="font-size: small;"
+		@formname="@nameof(Films)">
+		<fieldset class="input-button">
+			<InputText @bind-Value="ListUrl" class="input" placeholder="Letterboxd list url"
+				pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />
+			<input class="btn" type="submit">
+			<Loader class="htmx-indicator small plain"></Loader>
+		</fieldset>
+		<AntiforgeryToken />
+	</form>
+</div>

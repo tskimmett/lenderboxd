@@ -1,0 +1,16 @@
+﻿<span class="@("loader " + Class)"></span>
+@code {
+	[Parameter(CaptureUnmatchedValues = true)]
+	public Dictionary<string, object> Attributes { get; set; } = [];
+
+	string Class
+	{
+		get
+		{
+			if (Attributes.TryGetValue("class", out var val) && val is string className)
+				return className;
+			else
+				return "";
+		}
+	}
+}

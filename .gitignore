@@ -1,4 +1,5 @@
 bin/
 obj/
 BenchmarkDotnet.Artifacts/
-LibraryBox/.DS_Store
+Lenderboxd/.DS_Store
+.azure
