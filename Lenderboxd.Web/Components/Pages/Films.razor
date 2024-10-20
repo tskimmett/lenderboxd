@@ -1,4 +1,4 @@
-@page "/films/{user?}/{list?}"
+﻿@page "/films/{user?}/{list?}"
 @page "/{user?}/{list?}"
 @using System.Diagnostics;
 @inject NavigationManager NavigationManager;
@@ -51,6 +51,11 @@
 
 			UpdateClientHistory();
 		}
+		else
+		{
+			// set a default so users can immediately click submit and see results
+			ListUrl = $"{LetterboxdBaseUrl}/dave/list/official-top-250-narrative-feature-films/";
+		}
 
 		await base.OnInitializedAsync();
 	}
@@ -88,16 +93,16 @@
 		<PageTitle>Lenderboxd - Search</PageTitle>
 		<h1>Welcome to Lenderboxd</h1>
 		<p>
-		This is a tool for cross-referencing
-		<a href="https://letterboxd.com/dave/list/official-top-250-narrative-feature-films/" target="_blank">Letterboxd
-			lists</a>
-		with the
-		<a href="https://www.richlandlibrary.com/" target="_blank">Richland County Public Library</a> catalog.
-		<br>
-		<br>
-		Simply paste the link to a Letterboxd list in the input below and wait for the results to come in. Feel free to
-		leave the page for long lists and come back later to see the results.
-	</p>
+			This is a tool for cross-referencing
+			<a href="@ListUrl" target="_blank">Letterboxd
+				lists</a>
+			with the
+			<a href="https://www.richlandlibrary.com/" target="_blank">Richland County Public Library</a> catalog.
+			<br>
+			<br>
+			Simply paste the link to a Letterboxd list in the input below and wait for the results to come in. Feel free to
+			leave the page for long lists and come back later to see the results.
+		</p>
 	}
 	else
 	{
@@ -116,6 +121,21 @@
 				<p class="notice">
 					Availability results may not be accurate for films with the same title.
 				</p>
+			}
+
+			@if (Availability.Any(a => a.Value is null))
+			{
+				<div style="transition: transform 500ms;" _="
+				on htmx:sseMessage from <body />
+				set pending to (<tbody .loader />).length
+				set ready to (@Availability.Count - pending)
+				set { value: ready } on first <progress/> in me
+				if ready is @Availability.Count then
+					wait 1s
+					set my *transform to 'scaleX(0) scaleY(0)'
+				end">
+					<progress value="@Availability.Count(a => a.Value != null)" max="@Availability.Count"></progress>
+				</div>
 			}
 
 			<table>
@@ -154,11 +174,12 @@
 </main>
 
 <div class="drawer">
+	<div id="urlDisplay" style="font-size: x-small; margin: .5rem; margin-top: 0;"></div>
 	<form id="searchForm" hx-post="/films" hx-target="body" hx-swap="innerHtml show:window:top" style="font-size: small;"
 		@formname="@nameof(Films)">
 		<fieldset class="input-button">
-			<InputText @bind-Value="ListUrl" onfocus="this.select()" class="input" placeholder="Letterboxd list url"
-				pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />
+			<InputText @bind-Value="ListUrl" _="on input put my.value.substr(22) into #urlDisplay" onfocus="this.select()"
+				class="input" placeholder="Letterboxd list url" pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />
 			<input class="btn" type="submit">
 			<Loader class="htmx-indicator small plain"></Loader>
 		</fieldset>
