@@ -62,7 +62,7 @@ public class LetterboxdList : Grain, ILetterboxdList
 	{
 		_state.State.SearchResultSubscriptions = [.. await Task.WhenAll(_state.State.SearchResultSubscriptions.Select(sub =>
 		{
-			_logger.LogInformation("Stream subscription found {StreamId}", sub.StreamId);
+			_logger.LogDebug("Stream subscription found {StreamId}", sub.StreamId);
 			return sub.ResumeAsync(HandleSearchResult);
 		}))];
 	}
@@ -88,19 +88,19 @@ public class LetterboxdList : Grain, ILetterboxdList
 	{
 		if (_state.State.AvailabilityResults is null or [])
 		{
-			_logger.LogInformation("Pulling availability from catalog search...");
+			_logger.LogDebug("Pulling availability from catalog search...");
 			// initialize availability results to indicate they are pending
 			_state.State.AvailabilityResults = await Task.WhenAll(
 				_state.State.Films
 					.Select(f => GrainFactory.GetGrain<ICatalogSearch>(CatalogSearch.GetId("www.richlandlibrary.com", f.Title)).GetResult())
 			);
-			_logger.LogInformation("Pulled {0} results", _state.State.AvailabilityResults.Length);
+			_logger.LogDebug("Pulled {0} results", _state.State.AvailabilityResults.Length);
 
 			// only make requests if some results are missing
 			if (_state.State.AvailabilityResults.Any(r => r is null))
 			{
-				_logger.LogInformation("Queuing search requests...");
-				var streamProvider = this.GetStreamProvider("LibraryBox");
+				_logger.LogDebug("Queuing search requests...");
+				var streamProvider = this.GetStreamProvider("Default");
 
 				// queue requests
 				var requestStream = streamProvider.GetStream<string>("SearchRequests", library);
@@ -134,19 +134,25 @@ public class LetterboxdList : Grain, ILetterboxdList
 		{
 			if (filmIndex.TryGetValue(result.Item.FilmTitle, out var resultIdx))
 			{
-				_logger.LogInformation("{List} handling result for relevant film: {Film}", this, result.Item.FilmTitle);
+				_logger.LogDebug("{List} handling result for relevant film: {Film}", this, result.Item.FilmTitle);
 				_state.State.AvailabilityResults![resultIdx] = result.Item.Formats;
 				notifications.Add(_subsManager.Notify(observer => observer.FilmAvailabilityReady(new(result.Item.FilmTitle, result.Item.Formats))));
 			}
 		}
 		await Task.WhenAll([_state.WriteStateAsync(), .. notifications]);
-		// if (!_state.State.AvailabilityResults!.Any(r => r is null) && _searchResultSubscription is not null)
-		// 	await _searchResultSubscription.UnsubscribeAsync();
+		if (_state.State.AvailabilityResults!.All(r => r is not null) && _state.State.SearchResultSubscriptions.Any())
+		{
+			await Task.WhenAll(_state.State.SearchResultSubscriptions.Select(sub =>
+			{
+				_logger.LogDebug("{ListTitle} unsubscribing from stream {StreamId}", _state.State.Title, sub.StreamId);
+				return sub.UnsubscribeAsync();
+			}));
+		}
 	}
 
 	public Task Subscribe(ILetterboxdList.IObserver observer)
 	{
-		_logger.LogInformation("{Observer} subscribed for events", observer);
+		_logger.LogDebug("{Observer} subscribed for events", observer);
 		_subsManager.Subscribe(observer, observer);
 		return Task.CompletedTask;
 	}

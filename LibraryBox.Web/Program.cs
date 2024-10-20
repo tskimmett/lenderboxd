@@ -1,3 +1,4 @@
+using Azure.Storage.Queues;
 using LibraryBox;
 using LibraryBox.Web;
 using LibraryBox.Web.Components;
@@ -5,14 +6,20 @@ using Microsoft.AspNetCore.Components.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddKeyedAzureTableService("tables");
-builder.AddKeyedAzureQueueService("queues");
-builder.UseOrleans(siloBuilder =>
+builder.AddKeyedAzureTableClient("tables");
+builder.AddKeyedAzureQueueClient("queues");
+builder.UseOrleans(silo =>
 {
-    if (builder.Environment.IsDevelopment())
+    silo.AddAzureQueueStreams("Default", (SiloAzureQueueStreamConfigurator configurator) =>
     {
-        // siloBuilder.ConfigureEndpoints(Random.Shared.Next(10_000, 50_000), Random.Shared.Next(10_000, 50_000));
-    }
+        configurator.ConfigureAzureQueue(options =>
+        {
+            options.Configure<IServiceProvider>((queueOptions, sp) =>
+            {
+                queueOptions.QueueServiceClient = sp.GetKeyedService<QueueServiceClient>("queues");
+            });
+        });
+    });
 });
 
 builder.AddServiceDefaults();
@@ -87,8 +94,8 @@ app.MapGet("/film-list/{user}/{list}/events", async (
         var markup = await renderer.RenderComponent<MediaFormats>(new() { { nameof(MediaFormats.Formats), evt.Formats } });
         await res.WriteAsync($"data: {markup}\n\n", cancel);
         await res.Body.FlushAsync(cancel);
-        // if (pendingFilms.Count == 0)
-        //     done.SetResult();
+        if (pendingFilms.Count == 0)
+            done.SetResult();
     });
 
     var observerRef = grainFactory.CreateObjectReference<ILetterboxdList.IObserver>(observer);
@@ -103,6 +110,9 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     app.Logger.LogInformation("Closing event stream for {User}/{List}", user, list);
 
     await listGrain.Unsubscribe(observerRef);
+
+    await res.WriteAsync($"event: {ServerSentEvent.Close}\ndata:\n\n", cancel);
+    await res.Body.FlushAsync(cancel);
 
     await res.CompleteAsync();
 });

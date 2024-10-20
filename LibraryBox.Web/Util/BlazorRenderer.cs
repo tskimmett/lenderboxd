@@ -12,11 +12,15 @@ class BlazorRenderer
 		_htmlRenderer = htmlRenderer;
 	}
 
-	// Renders a component T which doesn't require any parameters
+	/// <summary>
+	/// Renders a component T which doesn't require any parameters
+	/// </summary>
 	public Task<string> RenderComponent<T>() where T : IComponent
 		 => RenderComponent<T>(ParameterView.Empty);
 
-	// Renders a component T using the provided dictionary of parameters
+	/// <summary>
+	/// Renders a component T using the provided dictionary of parameters
+	/// </summary>
 	public Task<string> RenderComponent<T>(Dictionary<string, object?> dictionary) where T : IComponent
 		 => RenderComponent<T>(ParameterView.FromDictionary(dictionary));
 

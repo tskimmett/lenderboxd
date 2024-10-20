@@ -106,7 +106,8 @@
 						<th style="text-align: center;">Available?</th>
 					</tr>
 				</thead>
-				<tbody hx-ext="sse" sse-connect="@(HasPendingAvailability ? $"/film-list/{User}/{List}/events" : "")">
+				<tbody hx-ext="sse" sse-close="@ServerSentEvent.Close"
+					sse-connect="@(HasPendingAvailability ? $"/film-list/{User}/{List}/events" : "")">
 					@foreach (var film in FilmList)
 					{
 						<tr>
@@ -133,7 +134,8 @@
 </main>
 
 <div class="drawer">
-	<form id="searchForm" hx-post="/films" hx-target="body" @formname="@nameof(Films)">
+	<form id="searchForm" hx-post="/films" hx-target="body" hx-swap="innerHtml show:window:top"
+		@formname="@nameof(Films)">
 		<fieldset class="input-button">
 			<InputText @bind-Value="ListUrl" placeholder="Letterboxd list url"
 				pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />

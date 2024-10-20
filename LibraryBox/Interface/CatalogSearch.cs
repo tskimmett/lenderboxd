@@ -19,7 +19,7 @@ public class SearchRequestHandler : Grain, ISearchRequestHandler
 		return RateLimitPartition.GetSlidingWindowLimiter(resource, key => new()
 		{
 			AutoReplenishment = true,
-			PermitLimit = 5,
+			PermitLimit = 10,
 			Window = TimeSpan.FromSeconds(1),
 			SegmentsPerWindow = 2,
 			QueueLimit = 100
@@ -38,7 +38,7 @@ public class SearchRequestHandler : Grain, ISearchRequestHandler
 
 	public override async Task OnActivateAsync(CancellationToken cancellationToken)
 	{
-		var provider = this.GetStreamProvider("LibraryBox");
+		var provider = this.GetStreamProvider("Default");
 		var stream = provider.GetStream<string>("SearchRequests", Library);
 		await stream.SubscribeAsync(HandleRequests);
 	}
@@ -46,7 +46,7 @@ public class SearchRequestHandler : Grain, ISearchRequestHandler
 	readonly List<string> _processed = [];
 	async Task HandleRequests(IList<SequentialItem<string>> films)
 	{
-		_logger.LogInformation("Received {FilmCount} requests for {Library}. First token: {Token}", films.Count, Library, films.First().Token);
+		_logger.LogDebug("Received {FilmCount} requests for {Library}. First token: {Token}", films.Count, Library, films.First().Token);
 		var unprocessedItems = films.ExceptBy(_processed, i => i.Item);
 		await Task.WhenAll(unprocessedItems.Select(async film =>
 		{
@@ -54,14 +54,14 @@ public class SearchRequestHandler : Grain, ISearchRequestHandler
 			var cached = await searchGrain.GetResult();
 			if (cached is null)
 			{
-				_logger.LogInformation("No result cached for {Film}, executing request.", film.Item);
+				_logger.LogDebug("No result cached for {Film}, executing request.", film.Item);
 				using var lease = await _limiter.AcquireAsync(Library);
 				await searchGrain.Execute();
 			}
 			_processed.Add(film.Item);
 		}));
 		_processed.Clear();
-		_logger.LogInformation("Finished");
+		_logger.LogDebug("Finished");
 	}
 }
 
@@ -118,7 +118,7 @@ public class CatalogSearch : Grain, ICatalogSearch
 		if (_state.State.LastRefresh.HasValue)
 			return;
 
-		_logger.LogInformation("Hitting library API for {FilmTitle}", FilmTitle);
+		_logger.LogDebug("Hitting library API for {FilmTitle}", FilmTitle);
 
 		var request = new HttpRequestMessage(HttpMethod.Post, "https://www.richlandlibrary.com/api/search/catalog")
 		{
@@ -139,27 +139,37 @@ public class CatalogSearch : Grain, ICatalogSearch
 		var rows = json.RootElement.GetProperty("rows");
 		foreach (var row in rows.EnumerateArray())
 		{
-			var rowData = row.GetProperty("full");
-			var title = rowData.GetProperty("title").GetString()?.TrimEnd('.');
-			var subtitle = rowData.GetProperty("subtitle").GetString()?.TrimEnd('.');
-			var fullTitle = title + (subtitle is null or "" ? "" : $": {subtitle}");
-			if (fullTitle?.Equals(FilmTitle, StringComparison.OrdinalIgnoreCase) == true)
+			try
 			{
-				if (ReadFormat(rowData) is MediaFormat fmt)
-					availableFormats.Add(fmt);
-			}
-
-			if (row.GetProperty("type").GetString() == "grouping")
-			{
-				foreach (var child in row.GetProperty("children").EnumerateArray())
+				var rowData = row.GetProperty("full");
+				if (rowData.ValueKind != JsonValueKind.Object)
+					continue;
+					
+				var title = rowData.GetProperty("title").GetString()?.TrimEnd('.');
+				var subtitle = rowData.GetProperty("subtitle").GetString()?.TrimEnd('.');
+				var fullTitle = title + (subtitle is null or "" ? "" : $": {subtitle}");
+				if (fullTitle?.Equals(FilmTitle, StringComparison.OrdinalIgnoreCase) == true)
 				{
-					if (ReadFormat(child) is MediaFormat fmt)
+					if (ReadFormat(rowData) is MediaFormat fmt)
 						availableFormats.Add(fmt);
 				}
-			}
 
-			if (availableFormats.Count == Enum.GetValues<MediaFormat>().Length)
-				break;
+				if (row.GetProperty("type").GetString() == "grouping")
+				{
+					foreach (var child in row.GetProperty("children").EnumerateArray())
+					{
+						if (ReadFormat(child) is MediaFormat fmt)
+							availableFormats.Add(fmt);
+					}
+				}
+
+				if (availableFormats.Count == Enum.GetValues<MediaFormat>().Length)
+					break;
+			}
+			catch (InvalidOperationException e)
+			{
+				_logger.LogError("Error processing JSON for {film} ({row}): {error}", FilmTitle, row, e);
+			}
 		}
 
 		_state.State.LastRefresh = DateTimeOffset.UtcNow;
@@ -182,8 +192,8 @@ public class CatalogSearch : Grain, ICatalogSearch
 
 	async Task PublishResult()
 	{
-		_logger.LogInformation("Publishing result to stream {FilmTitle}: {Formats}", FilmTitle, _state.State.Formats);
-		var provider = this.GetStreamProvider("LibraryBox");
+		_logger.LogDebug("Publishing result to stream {FilmTitle}: {Formats}", FilmTitle, _state.State.Formats);
+		var provider = this.GetStreamProvider("Default");
 		var stream = provider.GetStream<CatalogSearchResult>("SearchResults", "www.richlandlibrary.com");
 		await stream.OnNextAsync(new CatalogSearchResult(Library, FilmTitle, _state.State.Formats!));
 	}
