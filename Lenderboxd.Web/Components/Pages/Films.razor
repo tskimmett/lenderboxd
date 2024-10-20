@@ -1,4 +1,4 @@
-﻿@page "/films/{user?}/{list?}"
+@page "/films/{user?}/{list?}"
 @page "/{user?}/{list?}"
 @using System.Diagnostics;
 @inject NavigationManager NavigationManager;
@@ -157,7 +157,7 @@
 	<form id="searchForm" hx-post="/films" hx-target="body" hx-swap="innerHtml show:window:top" style="font-size: small;"
 		@formname="@nameof(Films)">
 		<fieldset class="input-button">
-			<InputText @bind-Value="ListUrl" class="input" placeholder="Letterboxd list url"
+			<InputText @bind-Value="ListUrl" onfocus="this.select()" class="input" placeholder="Letterboxd list url"
 				pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />
 			<input class="btn" type="submit">
 			<Loader class="htmx-indicator small plain"></Loader>
