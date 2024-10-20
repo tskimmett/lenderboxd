@@ -16,11 +16,14 @@ input:focus-visible {
 body {
     grid-template-rows: 1fr;
     height: 100vh;
+    font-size: 1rem;
 }
 
 table {
     --table-radius: var(--standard-border-radius);
 
+    table-layout: fixed;
+    word-wrap: break-word;
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
@@ -83,17 +86,27 @@ fieldset.input-button {
     padding: 0;
 }
 
-fieldset.input-button>:first-child {
+fieldset.input-button>.input {
     flex-grow: 1;
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-fieldset.input-button>:last-child {
+fieldset.input-button>.btn {
     width: auto;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+
+    .htmx-request & {
+        padding-right: 2rem;
+    }
+}
+
+fieldset.input-button>.loader {
+    position: absolute;
+    right: 0.5rem;
+    top: 2.7rem;
 }
 
 .icon-bluray {
@@ -118,24 +131,35 @@ fieldset.input-button>:last-child {
     height: 18px;
     display: inline-block;
     position: relative;
-}
 
-.loader::after,
-.loader::before {
-    content: '';
-    box-sizing: border-box;
-    width: 18px;
-    height: 18px;
-    border: 2px solid #FFF;
-    position: absolute;
-    left: 0;
-    top: 0;
-    animation: rotationBreak 3s ease-in-out infinite alternate;
-}
+    &::after,
+    &::before {
+        content: '';
+        box-sizing: border-box;
+        width: 18px;
+        height: 18px;
+        border: 2px solid #FFF;
+        position: absolute;
+        left: 0;
+        top: 0;
+        animation: rotationBreak 3s ease-in-out infinite alternate;
+    }
 
-.loader::after {
-    border-color: var(--accent);
-    animation-direction: alternate-reverse;
+    &:not(.plain)::after {
+        border-color: var(--accent);
+    }
+
+    &::after {
+        animation-direction: alternate-reverse;
+    }
+
+    &.small {
+        &::after,
+        &::before {
+            width: 11px;
+            height: 11px;
+        }
+    }
 }
 
 @keyframes rotationBreak {

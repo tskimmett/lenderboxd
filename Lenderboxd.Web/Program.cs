@@ -29,6 +29,10 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
 builder.Services.AddRazorComponents();
 builder.Services.AddAntiforgery();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+});
 builder.Services.AddHttpLogging(options => { });
 builder.Services.AddHttpsRedirection(options =>
 {
@@ -54,6 +58,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 app.UseAntiforgery();
+app.UseResponseCompression();
 
 app.MapRazorComponents<App>();
 app.MapControllers();

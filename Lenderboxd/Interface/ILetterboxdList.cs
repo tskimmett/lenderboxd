@@ -89,17 +89,19 @@ public class LetterboxdList : Grain, ILetterboxdList
 		if (_state.State.AvailabilityResults is null or [])
 		{
 			_logger.LogDebug("Pulling availability from catalog search...");
+			var timer = Stopwatch.StartNew();
 			// initialize availability results to indicate they are pending
 			_state.State.AvailabilityResults = await Task.WhenAll(
 				_state.State.Films
 					.Select(f => GrainFactory.GetGrain<ICatalogSearch>(CatalogSearch.GetId("www.richlandlibrary.com", f.Title)).GetResult())
 			);
-			_logger.LogDebug("Pulled {0} results", _state.State.AvailabilityResults.Length);
+			_logger.LogDebug("Pulled {Count} results in {Time}", _state.State.AvailabilityResults.Length, timer.Elapsed);
 
 			// only make requests if some results are missing
 			if (_state.State.AvailabilityResults.Any(r => r is null))
 			{
 				_logger.LogDebug("Queuing search requests...");
+				timer.Restart();
 				var streamProvider = this.GetStreamProvider("Default");
 
 				// queue requests
@@ -110,6 +112,7 @@ public class LetterboxdList : Grain, ILetterboxdList
 						.BatchIEnumerable(25)
 						.Select(batch => requestStream.OnNextBatchAsync(batch))
 				);
+				_logger.LogDebug("Queued requests in {Time}", timer.Elapsed);
 
 				// listen for results
 				var resultStream = streamProvider.GetStream<CatalogSearchResult>("SearchResults", library);
@@ -139,14 +142,22 @@ public class LetterboxdList : Grain, ILetterboxdList
 				notifications.Add(_subsManager.Notify(observer => observer.FilmAvailabilityReady(new(result.Item.FilmTitle, result.Item.Formats))));
 			}
 		}
-		await Task.WhenAll([_state.WriteStateAsync(), .. notifications]);
-		if (_state.State.AvailabilityResults!.All(r => r is not null) && _state.State.SearchResultSubscriptions.Any())
+
+		if (notifications.Count > 0)
 		{
-			await Task.WhenAll(_state.State.SearchResultSubscriptions.Select(sub =>
+			await Task.WhenAll([_state.WriteStateAsync(), .. notifications]);
+			if (_state.State.AvailabilityResults!.All(r => r is not null) && _state.State.SearchResultSubscriptions.Count > 0)
 			{
-				_logger.LogDebug("{ListTitle} unsubscribing from stream {StreamId}", _state.State.Title, sub.StreamId);
-				return sub.UnsubscribeAsync();
-			}));
+				await Task.WhenAll(_state.State.SearchResultSubscriptions.Select(sub =>
+				{
+					_logger.LogDebug("{ListTitle} unsubscribing from stream {StreamId}", _state.State.Title, sub.StreamId);
+					return sub.UnsubscribeAsync();
+				}));
+			}
+		}
+		else
+		{
+			_logger.LogDebug("{List} received no relevant search results", this);
 		}
 	}
 

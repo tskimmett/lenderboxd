@@ -29,7 +29,7 @@ public class LetterboxdScraper
 
 		return new(title, films.ToArray());
 
-		async Task<IEnumerable<Film>> ProcessPage(int page)
+		async Task<IList<Film>> ProcessPage(int page)
 		{
 			var doc = await ctx.OpenAsync($"https://letterboxd.com/{user}/list/{list}/detail/page/{page}");
 
@@ -58,7 +58,8 @@ public class LetterboxdScraper
 					);
 				})
 				.Where(film => film is not null)
-				.Select(film => film!);
+				.Select(film => film!)
+				.ToList();
 		}
 	}
 }

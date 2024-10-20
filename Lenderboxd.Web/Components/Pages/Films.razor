@@ -1,4 +1,6 @@
 ﻿@page "/films/{user?}/{list?}"
+@page "/{user?}/{list?}"
+@using System.Diagnostics;
 @inject NavigationManager NavigationManager;
 @inject IGrainFactory GrainFactory;
 @inject IHttpContextAccessor Ctx;
@@ -35,10 +37,16 @@
 		if (User is not null && List is not null)
 		{
 			var listGrain = GrainFactory.GetGrain<ILetterboxdList>($"{User}/{List}");
+			var timer = Stopwatch.StartNew();
 			FilmList = await listGrain.GetFilms(refresh: false);
+			Logger.LogDebug("Took {time} to fetch film list", timer.Elapsed);
+			timer.Restart();
 			ListTitle = (await listGrain.GetTitle()) ?? listGrain.GetPrimaryKeyString().ToLower();
+			Logger.LogDebug("Took {time} to fetch film title", timer.Elapsed);
+			timer.Restart();
 			Availability = (await listGrain.GetFilmAvailability("www.richlandlibrary.com"))
 			.ToDictionary(a => (a.filmTitle, a.filmYear), a => a.formats);
+			Logger.LogDebug("Took {time} to fetch film availability", timer.Elapsed);
 			ListUrl = $"{LetterboxdBaseUrl}/{User}/list/{List}";
 
 			UpdateClientHistory();
@@ -78,6 +86,18 @@
 	@if (User is null && List is null)
 	{
 		<PageTitle>List Search</PageTitle>
+		<h1>Welcome to Lenderboxd</h1>
+		<p>
+		This is a tool for cross-referencing
+		<a href="https://letterboxd.com/dave/list/official-top-250-narrative-feature-films/" target="_blank">Letterboxd
+			lists</a>
+		with the
+		<a href="https://www.richlandlibrary.com/" target="_blank">Richland County Public Library</a> catalog.
+		<br>
+		<br>
+		Simply paste the link to a Letterboxd list in the input below and wait for the results to come in. Feel free to
+		leave the page for long lists and come back later to see the results.
+	</p>
 	}
 	else
 	{
@@ -94,7 +114,7 @@
 			@if (HasDuplicate)
 			{
 				<p class="notice">
-					Note: this list contains films with the same title. Availability results may not be accurate for those films.
+					Availability results may not be accurate for films with the same title.
 				</p>
 			}
 
@@ -134,12 +154,13 @@
 </main>
 
 <div class="drawer">
-	<form id="searchForm" hx-post="/films" hx-target="body" hx-swap="innerHtml show:window:top"
+	<form id="searchForm" hx-post="/films" hx-target="body" hx-swap="innerHtml show:window:top" style="font-size: small;"
 		@formname="@nameof(Films)">
 		<fieldset class="input-button">
-			<InputText @bind-Value="ListUrl" placeholder="Letterboxd list url"
+			<InputText @bind-Value="ListUrl" class="input" placeholder="Letterboxd list url"
 				pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />
-			<input type="submit">
+			<input class="btn" type="submit">
+			<Loader class="htmx-indicator small plain"></Loader>
 		</fieldset>
 		<AntiforgeryToken />
 	</form>
