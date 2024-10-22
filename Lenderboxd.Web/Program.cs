@@ -111,15 +111,17 @@ app.MapGet("/film-list/{user}/{list}/events", async (
         await done.Task;
     }
     catch (OperationCanceledException) { }
+    finally
+    {
+        app.Logger.LogInformation("Closing event stream for {User}/{List}", user, list);
 
-    app.Logger.LogInformation("Closing event stream for {User}/{List}", user, list);
+        await listGrain.Unsubscribe(observerRef);
 
-    await listGrain.Unsubscribe(observerRef);
+        await res.WriteAsync($"event: {ServerSentEvent.Close}\ndata:\n\n", cancel);
+        await res.Body.FlushAsync(cancel);
 
-    await res.WriteAsync($"event: {ServerSentEvent.Close}\ndata:\n\n", cancel);
-    await res.Body.FlushAsync(cancel);
-
-    await res.CompleteAsync();
+        await res.CompleteAsync();
+    }
 });
 
 app.Run();
