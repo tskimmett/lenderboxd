@@ -38,7 +38,7 @@
 		{
 			var listGrain = GrainFactory.GetGrain<ILetterboxdList>($"{User}/{List}");
 			var timer = Stopwatch.StartNew();
-			FilmList = await listGrain.GetFilms(refresh: false);
+			FilmList = await listGrain.LoadFilms(refresh: false);
 			Logger.LogDebug("Took {time} to fetch film list", timer.Elapsed);
 			timer.Restart();
 			ListTitle = (await listGrain.GetTitle()) ?? listGrain.GetPrimaryKeyString().ToLower();
@@ -142,8 +142,8 @@
 				<thead>
 					<tr>
 						<th>Title</th>
-						<th>Year</th>
-						<th style="text-align: center;">Available?</th>
+						<th style="text-align: center; width: 4rem;">Year</th>
+						<th style="text-align: center; width: 7rem;">In Catalog?</th>
 					</tr>
 				</thead>
 				<tbody hx-ext="sse" sse-close="@ServerSentEvent.Close"
@@ -152,7 +152,7 @@
 					{
 						<tr>
 							<td>@film.Title</td>
-							<td>@film.ReleaseYear</td>
+							<td style="text-align: center;">@film.ReleaseYear</td>
 							<td style="text-align: center;">
 								<Flex Height="29px" sse-swap="@film.Title.ToSSE()">
 									@if (Availability.GetValueOrDefault((film.Title, film.ReleaseYear)) is null)
@@ -174,12 +174,13 @@
 </main>
 
 <div class="drawer">
-	<div id="urlDisplay" style="font-size: x-small; margin: .5rem; margin-top: 0;"></div>
+	<div id="urlDisplay" _="on input from #urlInput put #urlInput's value into me"
+		style="font-size: x-small; margin: .5rem; margin-top: 0;"></div>
 	<form id="searchForm" hx-post="/films" hx-target="body" hx-swap="innerHtml show:window:top" style="font-size: small;"
 		@formname="@nameof(Films)">
 		<fieldset class="input-button">
-			<InputText @bind-Value="ListUrl" _="on input put my.value.substr(22) into #urlDisplay" onfocus="this.select()"
-				class="input" placeholder="Letterboxd list url" pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />
+			<InputText id="urlInput" @bind-Value="ListUrl" onfocus="this.select()" class="input"
+				placeholder="Letterboxd list url" pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />
 			<input class="btn" type="submit">
 			<Loader class="htmx-indicator small plain"></Loader>
 		</fieldset>
