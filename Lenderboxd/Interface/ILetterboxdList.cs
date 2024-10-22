@@ -6,6 +6,7 @@ using DotNext;
 using Microsoft.Extensions.Logging;
 using Orleans.Concurrency;
 using Orleans.Runtime;
+using Orleans.Serialization.Invocation;
 using Orleans.Streams;
 using Orleans.Utilities;
 
@@ -19,12 +20,15 @@ public interface ILetterboxdList : IGrainWithStringKey
 	/// </summary>
 	/// <param name="refresh">Indicates whether or not to refresh the list data from letterboxd.</param>
 	/// <returns></returns>
-	public Task<IEnumerable<Film>> GetFilms(bool refresh);
+	public Task<IEnumerable<Film>> LoadFilms(bool refresh);
 
 	public Task<IEnumerable<(string filmTitle, uint? filmYear, MediaFormat[]? formats)>> GetFilmAvailability(string library);
 
 	[ReadOnly]
 	public Task<string?> GetTitle();
+
+	[ReadOnly]
+	public Task<Film[]?> GetFilms();
 
 	[AlwaysInterleave]
 	public Task Subscribe(IObserver observer);
@@ -68,13 +72,14 @@ public class LetterboxdList : Grain, ILetterboxdList
 	}
 
 	public Task<string?> GetTitle() => Task.FromResult(_state.State.Title);
+	public Task<Film[]?> GetFilms() => Task.FromResult(_state.State.LastRefresh != null ? _state.State.Films : null);
 
-	public async Task<IEnumerable<Film>> GetFilms(bool refresh)
+	public async Task<IEnumerable<Film>> LoadFilms(bool refresh)
 	{
 		if (refresh || _state.State.LastRefresh is null)
 		{
 			var sw = Stopwatch.StartNew();
-			var listData = await LetterboxdScraper.FetchFilms(UserSlug, ListSlug);
+			var listData = await LetterboxdScraper.FetchFilms(UserSlug, ListSlug, _logger);
 			_state.State.Title = listData.Title;
 			_state.State.Films = listData.Films;
 			_logger.LogInformation("Took {Time} to fetch films from letterboxd", sw.Elapsed);
@@ -128,29 +133,29 @@ public class LetterboxdList : Grain, ILetterboxdList
 			.ToArray();
 	}
 
-	readonly Dictionary<string, List<int>> filmIndex = [];
+	readonly Dictionary<string, List<int>> _filmIndex = [];
 	async Task HandleSearchResult(IList<SequentialItem<CatalogSearchResult>> results)
 	{
 		List<Task> notifications = [];
 
-		if (filmIndex.Count == 0)
+		if (_filmIndex.Count == 0)
 		{
 			for (int idx = 0; idx < _state.State.Films.Length; idx++)
 			{
 				var film = _state.State.Films[idx];
-				if (!filmIndex.ContainsKey(film.Title))
-					filmIndex[film.Title] = [idx];
+				if (!_filmIndex.ContainsKey(film.Title))
+					_filmIndex[film.Title] = [idx];
 				else
-					filmIndex[film.Title].Add(idx);
+					_filmIndex[film.Title].Add(idx);
 			}
 		}
 
 		foreach (var result in results)
 		{
-			if (filmIndex.TryGetValue(result.Item.FilmTitle, out var indexes))
+			if (_filmIndex.TryGetValue(result.Item.FilmTitle, out var indexes))
 			{
 				_logger.LogDebug("{List} handling result for relevant film: {Film}", this, result.Item.FilmTitle);
-				foreach(var resultIdx in indexes)
+				foreach (var resultIdx in indexes)
 					_state.State.AvailabilityResults![resultIdx] = result.Item.Formats;
 				notifications.Add(_subsManager.Notify(observer => observer.FilmAvailabilityReady(new(result.Item.FilmTitle, result.Item.Formats))));
 			}
@@ -166,6 +171,8 @@ public class LetterboxdList : Grain, ILetterboxdList
 					_logger.LogDebug("{ListTitle} unsubscribing from stream {StreamId}", _state.State.Title, sub.StreamId);
 					return sub.UnsubscribeAsync();
 				}));
+				_state.State.SearchResultSubscriptions.Clear();
+				await _state.WriteStateAsync();
 			}
 		}
 		else
