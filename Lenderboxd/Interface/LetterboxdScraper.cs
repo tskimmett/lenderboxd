@@ -1,11 +1,12 @@
 namespace Lenderboxd;
 
-using System.Diagnostics;
 using AngleSharp;
+using Microsoft.Extensions.Logging;
+
 
 public class LetterboxdScraper
 {
-	public static async Task<LetterboxdListData> FetchFilms(string user, string list)
+	public static async Task<LetterboxdListData> FetchFilms(string user, string list, ILogger logger)
 	{
 		user = user.ToLower();
 		list = list.ToLower();
@@ -24,7 +25,9 @@ public class LetterboxdScraper
 		if (numPages > 1)
 		{
 			foreach (var page in await Task.WhenAll(Enumerable.Range(2, numPages - 1).Select(ProcessPage)))
+			{
 				films.AddRange(page);
+			}
 		}
 
 		return new(title, films.ToArray());
@@ -41,7 +44,7 @@ public class LetterboxdScraper
 					numPages = int.Parse(lastPage.TextContent.Trim());
 			}
 
-			return doc.QuerySelectorAll("li.film-detail")
+			var films = doc.QuerySelectorAll("li.film-detail")
 				.Select(detail =>
 				{
 					var poster = detail.QuerySelector(".poster[data-film-id][data-film-slug]");
@@ -60,6 +63,11 @@ public class LetterboxdScraper
 				.Where(film => film is not null)
 				.Select(film => film!)
 				.ToList();
+
+			if (films.Count == 0)
+				logger.LogCritical("No films found on page, likely Letterboxd throttling");
+
+			return films;
 		}
 	}
 }
