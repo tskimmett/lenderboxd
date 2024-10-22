@@ -7,12 +7,13 @@ using System.Threading.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Orleans.Runtime;
 using Orleans.Streams;
+using Orleans.Streams.Core;
 
 public interface ISearchRequestHandler : IGrainWithStringKey
 { }
 
 [ImplicitStreamSubscription("SearchRequests")]
-public class SearchRequestHandler : Grain, ISearchRequestHandler
+public class SearchRequestHandler : Grain, ISearchRequestHandler, IStreamSubscriptionObserver, IAsyncBatchObserver<string>
 {
 	static readonly PartitionedRateLimiter<string> _limiter = PartitionedRateLimiter.Create((string resource) =>
 	{
@@ -22,7 +23,7 @@ public class SearchRequestHandler : Grain, ISearchRequestHandler
 			PermitLimit = 10,
 			Window = TimeSpan.FromSeconds(1),
 			SegmentsPerWindow = 2,
-			QueueLimit = 100
+			QueueLimit = 10000
 		});
 	});
 
@@ -31,20 +32,18 @@ public class SearchRequestHandler : Grain, ISearchRequestHandler
 	public SearchRequestHandler(ILogger<SearchRequestHandler> logger)
 	{
 		_logger = logger;
-		;
 	}
 
 	string Library => this.GetPrimaryKeyString();
 
-	public override async Task OnActivateAsync(CancellationToken cancellationToken)
+	public Task OnSubscribed(IStreamSubscriptionHandleFactory handleFactory)
 	{
-		var provider = this.GetStreamProvider("Default");
-		var stream = provider.GetStream<string>("SearchRequests", Library);
-		await stream.SubscribeAsync(HandleRequests);
+		var handle = handleFactory.Create<string>();
+		return handle.ResumeAsync(this);
 	}
 
 	readonly List<string> _processed = [];
-	async Task HandleRequests(IList<SequentialItem<string>> films)
+	async Task IAsyncBatchObserver<string>.OnNextAsync(IList<SequentialItem<string>> films)
 	{
 		_logger.LogDebug("Received {FilmCount} requests for {Library}. First token: {Token}", films.Count, Library, films.First().Token);
 		var unprocessedItems = films.ExceptBy(_processed, i => i.Item);
@@ -62,6 +61,18 @@ public class SearchRequestHandler : Grain, ISearchRequestHandler
 		}));
 		_processed.Clear();
 		_logger.LogDebug("Finished");
+	}
+
+	Task IAsyncBatchObserver<string>.OnCompletedAsync()
+	{
+		_logger.LogDebug("SearchRequestHandler OnComplete");
+		return Task.CompletedTask;
+	}
+
+	Task IAsyncBatchObserver<string>.OnErrorAsync(Exception ex)
+	{
+		_logger.LogError("SearchRequestHandler OnError: {Error}", ex);
+		return Task.CompletedTask;
 	}
 }
 
@@ -144,7 +155,7 @@ public class CatalogSearch : Grain, ICatalogSearch
 				var rowData = row.GetProperty("full");
 				if (rowData.ValueKind != JsonValueKind.Object)
 					continue;
-					
+
 				var title = rowData.GetProperty("title").GetString()?.TrimEnd('.');
 				var subtitle = rowData.GetProperty("subtitle").GetString()?.TrimEnd('.');
 				var fullTitle = title + (subtitle is null or "" ? "" : $": {subtitle}");
