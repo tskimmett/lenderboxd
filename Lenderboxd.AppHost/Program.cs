@@ -1,6 +1,8 @@
-﻿var builder = DistributedApplication.CreateBuilder(args);
+﻿using Azure.ResourceManager.Storage.Models;
 
-var azStorage = builder.AddAzureStorage("storage").RunAsEmulator();
+var builder = DistributedApplication.CreateBuilder(args);
+
+var azStorage = builder.AddAzureStorage("storage", StorageKind.Storage, StorageSkuName.StandardLrs).RunAsEmulator();
 var tables = azStorage.AddTables("tables");
 var queues = azStorage.AddQueues("queues");
 var orleans = builder.AddOrleans("lenderboxd-cluster")
