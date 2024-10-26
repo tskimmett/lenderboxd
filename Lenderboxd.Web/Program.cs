@@ -76,31 +76,37 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     var availability = await listGrain.GetFilmAvailability("www.richlandlibrary.com");
     var pendingFilms = availability
         .Where(a => a.formats is null)
-        .Select(a => a.filmTitle)
+        .Select((_, idx) => idx)
         .ToHashSet();
 
-    res.Headers.ContentType = "text/event-stream";
-    res.StatusCode = 200;
-
     if (pendingFilms.Count == 0)
-    {
-        await res.CompleteAsync();
-        return;
-    }
+        return res.CompleteAsync();
 
-    await res.StartAsync(cancel);
+    await res.StartEventStream(cancel);
 
     var done = new TaskCompletionSource();
     cancel.Register(() => done.SetCanceled(cancel));
     var observer = new LetterboxdListObserver(async evt =>
     {
-        pendingFilms.Remove(evt.Title);
-        await res.WriteAsync($"event: {evt.Title.ToSSE()}\n", cancel);
-        var markup = await renderer.RenderComponent<MediaFormats>(new() { { nameof(MediaFormats.Formats), evt.Formats } });
-        await res.WriteAsync($"data: {markup}\n\n", cancel);
+        pendingFilms.Remove(evt.Index);
+        await res.DataStarSignal(new { pending = pendingFilms.Count }, cancel);
+
+        var selector = $"tbody tr:nth-child({evt.Index + 1}) .loader";
+        if (evt.Formats.Length > 0)
+        {
+            var markup = await renderer.RenderComponent<MediaFormats>(new() { { nameof(MediaFormats.Formats), evt.Formats } });
+            await res.DataStarFragment(markup, cancel, selector);
+        }
+        else
+            await res.DataStarDelete(selector, cancel);
+
         await res.Body.FlushAsync(cancel);
+
         if (pendingFilms.Count == 0)
+        {
+            await res.DataStarSignal(new { pending = 0 }, cancel);
             done.SetResult();
+        }
     });
 
     var observerRef = grainFactory.CreateObjectReference<ILetterboxdList.IObserver>(observer);
@@ -114,14 +120,10 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     finally
     {
         app.Logger.LogInformation("Closing event stream for {User}/{List}", user, list);
-
         await listGrain.Unsubscribe(observerRef);
-
-        await res.WriteAsync($"event: {ServerSentEvent.Close}\ndata:\n\n", cancel);
         await res.Body.FlushAsync(cancel);
-
-        await res.CompleteAsync();
     }
+    return res.CompleteAsync();
 });
 
 app.Run();
