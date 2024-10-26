@@ -38,6 +38,7 @@ public interface ILetterboxdList : IGrainWithStringKey
 
 	public interface IObserver : IGrainObserver
 	{
+		[OneWay]
 		public Task FilmAvailabilityReady(FilmAvailabilityEvent evt);
 	}
 }
@@ -156,19 +157,23 @@ public class LetterboxdList : Grain, ILetterboxdList
 			{
 				_logger.LogDebug("{List} handling result for relevant film: {Film}", this, result.Item.FilmTitle);
 				foreach (var resultIdx in indexes)
+				{
 					_state.State.AvailabilityResults![resultIdx] = result.Item.Formats;
-				notifications.Add(_subsManager.Notify(observer => observer.FilmAvailabilityReady(new(result.Item.FilmTitle, result.Item.Formats))));
+					notifications.Add(_subsManager.Notify(observer => observer.FilmAvailabilityReady(new(resultIdx, result.Item.FilmTitle, result.Item.Formats))));
+				}
 			}
 		}
 
 		if (notifications.Count > 0)
 		{
+			_logger.LogCritical("{List} awaiting observer notification tasks ({Count})", this, notifications.Count);
 			await Task.WhenAll([_state.WriteStateAsync(), .. notifications]);
+			_logger.LogCritical("{List} completed observer notifications!)", this);
 			if (_state.State.AvailabilityResults!.All(r => r is not null) && _state.State.SearchResultSubscriptions.Count > 0)
 			{
 				await Task.WhenAll(_state.State.SearchResultSubscriptions.Select(sub =>
 				{
-					_logger.LogDebug("{ListTitle} unsubscribing from stream {StreamId}", _state.State.Title, sub.StreamId);
+					_logger.LogDebug("{List} unsubscribing from stream {StreamId}", this, sub.StreamId);
 					return sub.UnsubscribeAsync();
 				}));
 				_state.State.SearchResultSubscriptions.Clear();
@@ -224,7 +229,7 @@ public record Film(
 );
 
 [GenerateSerializer]
-public record FilmAvailabilityEvent(string Title, MediaFormat[] Formats);
+public record FilmAvailabilityEvent(int Index, string Title, MediaFormat[] Formats);
 
 public enum MediaFormat : int
 {
