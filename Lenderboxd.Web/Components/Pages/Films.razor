@@ -44,13 +44,14 @@
 		{
 			var listGrain = GrainFactory.GetGrain<ILetterboxdList>($"{User}/{List}");
 			var timer = Stopwatch.StartNew();
-			FilmList = await listGrain.LoadFilms(refresh: false);
+			FilmList = await listGrain.GetFilms() ?? await listGrain.LoadFilms(refresh: false);
 			Logger.LogDebug("Took {time} to fetch film list", timer.Elapsed);
 			timer.Restart();
 			ListTitle = (await listGrain.GetTitle()) ?? listGrain.GetPrimaryKeyString().ToLower();
 			Logger.LogDebug("Took {time} to fetch film title", timer.Elapsed);
 			timer.Restart();
-			Availability = await listGrain.GetFilmAvailability("www.richlandlibrary.com");
+			Availability = await listGrain.GetFilmAvailability("www.richlandlibrary.com")
+			?? await listGrain.LoadFilmAvailability("www.richlandlibrary.com");
 			Logger.LogDebug("Took {time} to fetch film availability", timer.Elapsed);
 			ListUrl = $"{LetterboxdBaseUrl}/{User}/list/{List}";
 		}

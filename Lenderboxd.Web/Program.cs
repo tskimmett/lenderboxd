@@ -5,6 +5,7 @@ using Lenderboxd;
 using Lenderboxd.Web;
 using Lenderboxd.Web.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.ResponseCompression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +35,7 @@ builder.Services.AddAntiforgery();
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
-    // options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["text/event-stream"]);
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["text/event-stream"]);
 });
 builder.Services.AddLogging();
 builder.Services.AddHttpLogging(options => { });
@@ -79,7 +80,7 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     var listGrain = grainFactory.GetGrain<ILetterboxdList>(id);
     var films = await listGrain.GetFilms();
     var availability = await listGrain.GetFilmAvailability("www.richlandlibrary.com");
-    var pendingFilms = availability.Count(a => a is null);
+    var pendingFilms = availability!.Count(a => a is null);
 
     // do as little as possible between fetching grain state and subscribing to avoid missing events
     if (pendingFilms == 0)

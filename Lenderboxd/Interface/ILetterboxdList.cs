@@ -22,13 +22,19 @@ public interface ILetterboxdList : IGrainWithStringKey
 	/// <returns></returns>
 	public Task<IEnumerable<Film>> LoadFilms(bool refresh);
 
-	public Task<MediaFormat[]?[]> GetFilmAvailability(string library);
+	public Task<MediaFormat[]?[]> LoadFilmAvailability(string library);
 
 	[ReadOnly]
+	[AlwaysInterleave]
 	public Task<string?> GetTitle();
 
 	[ReadOnly]
+	[AlwaysInterleave]
 	public Task<Film[]?> GetFilms();
+
+	[ReadOnly]
+	[AlwaysInterleave]
+	public Task<MediaFormat[]?[]?> GetFilmAvailability(string library);
 
 	[AlwaysInterleave]
 	public Task Subscribe(IObserver observer);
@@ -74,6 +80,7 @@ public class LetterboxdList : Grain, ILetterboxdList
 
 	public Task<string?> GetTitle() => Task.FromResult(_state.State.Title);
 	public Task<Film[]?> GetFilms() => Task.FromResult(_state.State.LastRefresh != null ? _state.State.Films : null);
+	public Task<MediaFormat[]?[]?> GetFilmAvailability(string library) => Task.FromResult(_state.State.AvailabilityResults);
 
 	public async Task<IEnumerable<Film>> LoadFilms(bool refresh)
 	{
@@ -90,7 +97,7 @@ public class LetterboxdList : Grain, ILetterboxdList
 		return _state.State.Films;
 	}
 
-	public async Task<MediaFormat[]?[]> GetFilmAvailability(string library = "www.richlandlibrary.com")
+	public async Task<MediaFormat[]?[]> LoadFilmAvailability(string library = "www.richlandlibrary.com")
 	{
 		if (_state.State.AvailabilityResults is null or [])
 		{
