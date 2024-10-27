@@ -20,17 +20,34 @@ public static class ServerSentEvent
 		return res.StartAsync(cancellationToken);
 	}
 
+	public enum DatastarMerge
+	{
+		Morph,
+		Append,
+		After,
+		Before
+	}
+
 	public static async Task DataStarFragment(
 		this HttpResponse res,
 		string fragment,
 		CancellationToken cancel,
-		string? selector = null)
+		string? selector = null,
+		DatastarMerge? merge = null)
 	{
 		await res.WriteAsync($"event: datastar-fragment\n", cancel);
 		if (selector is not null)
 			await res.WriteAsync($"data: selector {selector}\n", cancel);
-		await res.WriteAsync($"data: fragment {fragment}\n\n", cancel);
-		await res.Body.FlushAsync(cancel);
+		await res.WriteAsync($"data: fragment {fragment}\n", cancel);
+
+		if (merge is DatastarMerge.Append)
+			await res.WriteAsync("data: merge append\n");
+		else if (merge is DatastarMerge.After)
+			await res.WriteAsync("data: merge after\n");
+		else if (merge is DatastarMerge.Before)
+			await res.WriteAsync("data: merge before\n");
+
+		await res.WriteAsync($"data: vt false\n\n", cancel);
 	}
 
 	public static async Task DataStarDelete(
@@ -40,7 +57,6 @@ public static class ServerSentEvent
 	{
 		await res.WriteAsync($"event: datastar-delete\n", cancel);
 		await res.WriteAsync($"data: selector {selector}\n\n", cancel);
-		await res.Body.FlushAsync(cancel);
 	}
 
 	public static async Task DataStarSignal(
@@ -49,8 +65,6 @@ public static class ServerSentEvent
 		CancellationToken cancel)
 	{
 		await res.WriteAsync($"event: datastar-signal\n", cancel);
-		// todo: json might not work?
 		await res.WriteAsync($"data: store {JsonSerializer.Serialize(store)}\n\n", cancel);
-		await res.Body.FlushAsync(cancel);
 	}
 }

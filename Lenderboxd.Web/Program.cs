@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Azure.Storage.Queues;
 using Lenderboxd;
 using Lenderboxd.Web;
@@ -32,7 +34,9 @@ builder.Services.AddAntiforgery();
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
+    // options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["text/event-stream"]);
 });
+builder.Services.AddLogging();
 builder.Services.AddHttpLogging(options => { });
 builder.Services.AddHttpsRedirection(options =>
 {
@@ -73,36 +77,40 @@ app.MapGet("/film-list/{user}/{list}/events", async (
 {
     var id = $"{user}/{list}";
     var listGrain = grainFactory.GetGrain<ILetterboxdList>(id);
+    var films = await listGrain.GetFilms();
     var availability = await listGrain.GetFilmAvailability("www.richlandlibrary.com");
-    var pendingFilms = availability
-        .Where(a => a.formats is null)
-        .Select((_, idx) => idx)
-        .ToHashSet();
-
-    if (pendingFilms.Count == 0)
-        return res.CompleteAsync();
+    var pendingFilms = availability.Count(a => a is null);
 
     await res.StartEventStream(cancel);
+
+    var sw = Stopwatch.StartNew();
+    // start by sending data for all known availability
+    var markup = await renderer.RenderComponent<FilmTable>(new()
+    {
+        [nameof(FilmTable.Films)] = films,
+        [nameof(FilmTable.Availability)] = availability
+    });
+    await res.DataStarFragment(HtmlWhitespace().Replace(markup, "").Replace("\n", ""), cancel);
+
+    await res.DataStarSignal(new { pending = pendingFilms }, cancel);
+    await res.Body.FlushAsync();
+    app.Logger.LogInformation("Took {Time} to flush current availability state.", sw.Elapsed);
+
+    if (pendingFilms == 0)
+        return res.CompleteAsync();
 
     var done = new TaskCompletionSource();
     cancel.Register(() => done.SetCanceled(cancel));
     var observer = new LetterboxdListObserver(async evt =>
     {
-        pendingFilms.Remove(evt.Index);
-        await res.DataStarSignal(new { pending = pendingFilms.Count }, cancel);
+        pendingFilms--;
+        await res.DataStarSignal(new { pending = pendingFilms }, cancel);
 
-        var selector = $"tbody tr:nth-child({evt.Index + 1}) .loader";
-        if (evt.Formats.Length > 0)
-        {
-            var markup = await renderer.RenderComponent<MediaFormats>(new() { { nameof(MediaFormats.Formats), evt.Formats } });
-            await res.DataStarFragment(markup, cancel, selector);
-        }
-        else
-            await res.DataStarDelete(selector, cancel);
+        await SendAvailabilityFragment(res, evt.Index, evt.Formats, cancel);
 
         await res.Body.FlushAsync(cancel);
 
-        if (pendingFilms.Count == 0)
+        if (pendingFilms == 0)
         {
             await res.DataStarSignal(new { pending = 0 }, cancel);
             done.SetResult();
@@ -124,6 +132,16 @@ app.MapGet("/film-list/{user}/{list}/events", async (
         await res.Body.FlushAsync(cancel);
     }
     return res.CompleteAsync();
+
+    async Task SendAvailabilityFragment(HttpResponse res, int idx, MediaFormat[] formats, CancellationToken cancel)
+    {
+        var markup = await renderer.RenderComponent<MediaFormats>(new()
+        {
+            ["id"] = $"availability-{idx}",
+            [nameof(MediaFormats.Formats)] = formats
+        });
+        await res.DataStarFragment(markup, cancel);
+    }
 });
 
 app.Run();
@@ -141,4 +159,10 @@ class LetterboxdListObserver : ILetterboxdList.IObserver
     {
         await _handler(evt);
     }
+}
+
+partial class Program
+{
+    [GeneratedRegex(@"(^\s*)|(\s*$)", RegexOptions.Multiline | RegexOptions.RightToLeft)]
+    private static partial Regex HtmlWhitespace();
 }

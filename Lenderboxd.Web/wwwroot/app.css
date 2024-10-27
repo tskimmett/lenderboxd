@@ -1,8 +1,3 @@
-[v-scope] {
-    /* in case elements are conditionally rendered, hide vue blocks to avoid content flashing */
-    opacity: 0;
-}
-
 :root {
     --accent: #00afd9;
     --accent-hover: #02bdea;
@@ -97,14 +92,36 @@ fieldset.input-button>.btn {
     width: auto;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+    display: flex;
+    justify-content: center;
 
-    .htmx-request & {
-        padding-right: 2rem;
+    &:disabled {
+        background-color: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-text);
+        opacity: .9;
+    }
+
+    form.loading & {
+        .text {
+            display: none;
+            ;
+        }
+
+        .loader {
+            display: block;
+        }
+    }
+
+    .loader {
+        display: none;
+        margin-right: -.5rm;
+        margin-top: 1px;
     }
 }
 
 fieldset.input-button>.loader {
-    position: absolute;
+    position: relative;
     right: 0.5rem;
     bottom: 1.8rem;
     pointer-events: none;
@@ -120,9 +137,47 @@ fieldset.input-button>.loader {
     align-items: stretch;
 }
 
+progress {
+    height: .4rem;
+    margin: 0;
+    border-radius: 0;
+    margin-bottom: -2.9rem;
+    transition: opacity 500ms;
+
+    &[value="1"] {
+        opacity: 0;
+    }
+}
+
+progress::-webkit-progress-bar {
+    border-radius: 0;
+}
+
+progress::-webkit-progress-value {
+    border-radius: 0;
+}
+
+progress::-moz-progress-bar {
+    border-radius: 0;
+}
+
+.icon-dvd {
+    width: 29px;
+    height: 29px;
+    background-size: cover;
+    background-image: url(/img/dvd.svg);
+}
+.icon-bluray {
+    width: 29px;
+    height: 29px;
+    background-size: cover;
+    background-image: url(/img/bluray.svg);
+}
+
 @media (prefers-color-scheme: dark) {
     .icon-dvd {
         filter: invert();
+        opacity: .9;
     }
 }
 
@@ -155,6 +210,9 @@ fieldset.input-button>.loader {
     }
 
     &.small {
+        width: 11px;
+        height: 11px;
+
         &::after,
         &::before {
             width: 11px;

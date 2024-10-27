@@ -22,7 +22,7 @@ public interface ILetterboxdList : IGrainWithStringKey
 	/// <returns></returns>
 	public Task<IEnumerable<Film>> LoadFilms(bool refresh);
 
-	public Task<IEnumerable<(string filmTitle, uint? filmYear, MediaFormat[]? formats)>> GetFilmAvailability(string library);
+	public Task<MediaFormat[]?[]> GetFilmAvailability(string library);
 
 	[ReadOnly]
 	public Task<string?> GetTitle();
@@ -90,7 +90,7 @@ public class LetterboxdList : Grain, ILetterboxdList
 		return _state.State.Films;
 	}
 
-	public async Task<IEnumerable<(string filmTitle, uint? filmYear, MediaFormat[]? formats)>> GetFilmAvailability(string library = "www.richlandlibrary.com")
+	public async Task<MediaFormat[]?[]> GetFilmAvailability(string library = "www.richlandlibrary.com")
 	{
 		if (_state.State.AvailabilityResults is null or [])
 		{
@@ -128,10 +128,7 @@ public class LetterboxdList : Grain, ILetterboxdList
 			await _state.WriteStateAsync();
 		}
 
-		return _state.State.Films
-			.Zip(_state.State.AvailabilityResults)
-			.Select(p => (p.First.Title, p.First.ReleaseYear, p.Second))
-			.ToArray();
+		return _state.State.AvailabilityResults;
 	}
 
 	readonly Dictionary<string, List<int>> _filmIndex = [];

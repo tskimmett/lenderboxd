@@ -1,0 +1,48 @@
+﻿@code {
+	[Parameter]
+	public IEnumerable<Film> Films { get; set; } = [];
+
+	[Parameter]
+	public MediaFormat[]?[] Availability { get; set; } = [];
+
+	string AvailabilityId(int idx) => $"availability-{idx}";
+
+	int CountPendingAvailability() => Availability.Count(v => v is null);
+}
+
+<div id="filmTable">
+	@if (Availability.Any(a => a is null))
+	{
+		<progress data-store="{ pending: @CountPendingAvailability(), total: @Availability.Length }"
+			data-bind-value="($total - $pending) / $total"></progress>
+	}
+
+	<table style="margin-top: 0;">
+		<thead>
+			<tr>
+				<th>Title</th>
+				<th style="text-align: center; width: 4rem;">Year</th>
+				<th style="text-align: center; width: 7rem;">In Catalog?</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var (film, idx) in Films.Select((film, idx) => (film, idx)))
+			{
+				<tr>
+					<td>@film.Title</td>
+					<td style="text-align: center;">@film.ReleaseYear</td>
+					<td style="text-align: center;" class="availability-results">
+						@if (Availability[idx] is null)
+						{
+							<Loader id="@AvailabilityId(idx)" />
+						}
+						else
+						{
+							<MediaFormats id="@AvailabilityId(idx)" Formats="Availability[idx]" />
+						}
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+</div>

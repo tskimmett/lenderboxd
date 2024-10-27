@@ -1,4 +1,4 @@
-﻿<span class="@("loader " + Class)"></span>
+﻿<span @attributes="Attributes" class="@("loader " + Class)"></span>
 @code {
 	[Parameter(CaptureUnmatchedValues = true)]
 	public Dictionary<string, object> Attributes { get; set; } = [];

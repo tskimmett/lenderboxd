@@ -1,6 +1,6 @@
 ﻿@code {
 	[Parameter]
-	public string Height { get; set; } = "auto";
+	public string? Height { get; set; } = null;
 
 	[Parameter]
 	public RenderFragment? ChildContent { get; set; }
@@ -9,6 +9,6 @@
 	public Dictionary<string, object>? Attributes { get; set; }
 }
 
-<div class="flex" style="height: @Height;" @attributes="Attributes">
+<div class="flex" style="@(@Height != null ? $"height: {Height}" : false)" @attributes="Attributes">
 	@ChildContent
 </div>

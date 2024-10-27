@@ -2,6 +2,9 @@
 	[Parameter]
 	public MediaFormat[] Formats { get; set; } = [];
 
+	[Parameter(CaptureUnmatchedValues = true)]
+	public Dictionary<string, object>? Attributes { get; set; }
+
 	string GetIcon(MediaFormat format)
 	{
 		return format switch
@@ -13,15 +16,17 @@
 	}
 }
 
-@foreach (var fmt in Formats.Order())
-{
-	switch (fmt)
+<Flex @attributes="Attributes">
+	@foreach (var fmt in Formats.Order())
 	{
-		case MediaFormat.Dvd:
-			<img class="icon-dvd" src="/img/dvd.svg">
-			break;
-		case MediaFormat.Bluray:
-			<img class="icon-bluray" src="/img/bluray.svg">
-			break;
+		switch (fmt)
+		{
+			case MediaFormat.Dvd:
+				<div class="icon-dvd"></div>
+				break;
+			case MediaFormat.Bluray:
+				<div class="icon-bluray"></div>
+				break;
+		}
 	}
-}
+</Flex>

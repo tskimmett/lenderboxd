@@ -1,10 +1,12 @@
 ﻿@page "/films/{user?}/{list?}"
 @page "/{user?}/{list?}"
 @using System.Diagnostics;
+@using Microsoft.AspNetCore.Mvc.Routing
 @inject NavigationManager NavigationManager;
 @inject IGrainFactory GrainFactory;
 @inject IHttpContextAccessor Ctx;
 @inject ILogger<Films> Logger;
+@preservewhitespace false
 
 @code
 {
@@ -15,13 +17,17 @@
 	public string? ListUrl { get; set; }
 
 	[Parameter]
+	public bool Subscribe { get; set; } = true;
+
+	[Parameter]
 	public string? User { get; set; }
 
 	[Parameter]
 	public string? List { get; set; }
 
+	string ListTitle { get; set; } = "";
 	IEnumerable<Film> FilmList { get; set; } = [];
-	Dictionary<(string, uint?), MediaFormat[]?> Availability { get; set; } = [];
+	MediaFormat[]?[] Availability { get; set; } = [];
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -44,55 +50,29 @@
 			ListTitle = (await listGrain.GetTitle()) ?? listGrain.GetPrimaryKeyString().ToLower();
 			Logger.LogDebug("Took {time} to fetch film title", timer.Elapsed);
 			timer.Restart();
-			Availability = (await listGrain.GetFilmAvailability("www.richlandlibrary.com"))
-			.ToDictionary(a => (a.filmTitle, a.filmYear), a => a.formats);
+			Availability = await listGrain.GetFilmAvailability("www.richlandlibrary.com");
 			Logger.LogDebug("Took {time} to fetch film availability", timer.Elapsed);
 			ListUrl = $"{LetterboxdBaseUrl}/{User}/list/{List}";
-
-			UpdateClientHistory();
 		}
 		else
 		{
-			// set a default so users can immediately click submit and see results
+			// set a default so users can more easily get started
 			ListUrl = $"{LetterboxdBaseUrl}/dave/list/official-top-250-narrative-feature-films/";
 		}
 
 		await base.OnInitializedAsync();
 	}
 
-	int CountPendingAvailability() => Availability.Values.Count(v => v is null);
-	bool HasPendingAvailability => Availability.Values.Any(v => v is null);
-
-	string ListTitle { get; set; } = "";
-
-	bool HasDuplicate => FilmList.DistinctBy(f => f.Title).Count() < FilmList.Count(); void
-
-	UpdateClientHistory()
-	{
-		var newUrl = $"/films/{User}/{List}";
-		if (newUrl != Ctx.HttpContext?.Request?.GetTypedHeaders()?.Referer?.AbsolutePath)
-			Ctx.HttpContext?.Response.Headers.Add("Hx-Push-Url", newUrl);
-	}
-
-	MediaFormat[] GetFormats(string filmTitle, uint? year)
-	{
-		try
-		{
-			return Availability[(filmTitle, year)] ?? [];
-		}
-		catch (Exception)
-		{
-			Logger.LogWarning(" Availability: {0}", string.Join(';', Availability.Keys));
-			throw;
-		}
-	}
+	bool HasPendingAvailability => Availability.Any(v => v is null);
+	bool HasDuplicate => FilmList.DistinctBy(f => f.Title).Count() < FilmList.Count();
+	string Path => User is not null && List is not null ? $"/{User}/{List}" : "";
 }
 
-<main data-store="{ pending: @CountPendingAvailability(), total: @Availability.Count }">
+<main id="main">
 	@if (User is null && List is null)
 	{
 		<PageTitle>Lenderboxd - Search</PageTitle>
-		<h1>Welcome to Lenderboxd</h1>
+		<h1> Welcome to Lenderboxd </h1>
 		<p>
 			This is a tool for cross-referencing
 			<a href="@ListUrl" target="_blank">Letterboxd
@@ -124,58 +104,38 @@
 				</p>
 			}
 
-			@if (Availability.Any(a => a.Value is null))
-			{
-				<div style="transition: transform 500ms;">
-					<progress data-bind-value="$total - $pending" max="@Availability.Count"></progress>
-				</div>
-			}
-
-			<table>
-				<thead>
-					<tr>
-						<th>Title</th>
-						<th style="text-align: center; width: 4rem;">Year</th>
-						<th style="text-align: center; width: 7rem;">In Catalog?</th>
-					</tr>
-				</thead>
-				<tbody data-on-load="@(HasPendingAvailability ? $"$$get('/film-list/{User}/{List}/events')" : false)">
-					@foreach (var film in FilmList)
-					{
-						<tr>
-							<td>@film.Title</td>
-							<td style="text-align: center;">@film.ReleaseYear</td>
-							<td style="text-align: center;">
-								<Flex Height="29px">
-									@if (Availability.GetValueOrDefault((film.Title, film.ReleaseYear)) is null)
-									{
-										<Loader></Loader>
-									}
-									else
-									{
-										<MediaFormats Formats="@GetFormats(film.Title, film.ReleaseYear)"></MediaFormats>
-									}
-								</Flex>
-							</td>
-						</tr>
-					}
-				</tbody>
-			</table>
+			<FilmTable Films="FilmList" Availability="Availability" />
 		}
 	}
 </main>
 
-<div class="drawer">
-	<div id="urlDisplay" _="on input from #urlInput put #urlInput's value into me"
-		style="font-size: x-small; margin: .5rem; margin-top: 0;"></div>
+@if (Subscribe && HasPendingAvailability)
+{
+	<div data-on-load="$$get('/film-list/@User/@List/events')"></div>
+}
+
+<div class="drawer" data-store="{ url: '@ListUrl', submitting: false }">
+	<div id="urlDisplay" data-text="$url" style="font-size: x-small; margin: .5rem; margin-top: 0;">@ListUrl</div>
 	<form id="searchForm" method="post" action="/" style="font-size: small;" @formname="@nameof(Films)"
-		data-enhance="false">
+		data-class="{ loading: $submitting }" data-on-submit="$submitting = true">
 		<fieldset class="input-button">
 			<InputText id="urlInput" @bind-Value="ListUrl" onfocus="this.select()" class="input"
-				placeholder="Letterboxd list url" pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*" />
-			<input class="btn" type="submit">
-			<Loader id="searchLoader" class="datastar-indicator small plain"></Loader>
+				placeholder="Letterboxd list url" pattern="https://letterboxd.com/[^\/.]+?/list/[^\/.]+?.*"
+				data-model="url" />
+			<button class="btn flex" style="width: 6rem" type="submit" data-bind-disabled="$submitting">
+				<span class="text">Submit</span>
+				<Loader id="searchLoader" class="small plain" />
+			</button>
+
 		</fieldset>
 		<AntiforgeryToken />
 	</form>
 </div>
+
+@if (Path != "" && Path != Ctx.HttpContext?.Request.Path)
+{
+	<script>
+	// Since the form post endpoint won't have the user/list in the path, update URL client-side
+	history.replaceState(null, null, "@Path");
+</script>
+}
