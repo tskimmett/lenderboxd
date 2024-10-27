@@ -48,6 +48,15 @@ public interface ILetterboxdList : IGrainWithStringKey
 	}
 }
 
+[GenerateSerializer]
+public record FilmAvailabilityEvent(int Index, string Title, MediaFormat[] Formats);
+
+public enum MediaFormat : int
+{
+	Dvd,
+	Bluray
+}
+
 public class LetterboxdList : Grain, ILetterboxdList
 {
 	readonly ObserverManager<ILetterboxdList.IObserver> _subsManager;
@@ -230,12 +239,3 @@ public record Film(
 	string Title,
 	uint? ReleaseYear
 );
-
-[GenerateSerializer]
-public record FilmAvailabilityEvent(int Index, string Title, MediaFormat[] Formats);
-
-public enum MediaFormat : int
-{
-	Dvd,
-	Bluray
-}
