@@ -81,23 +81,13 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     var availability = await listGrain.GetFilmAvailability("www.richlandlibrary.com");
     var pendingFilms = availability.Count(a => a is null);
 
-    await res.StartEventStream(cancel);
-
-    var sw = Stopwatch.StartNew();
-    // start by sending data for all known availability
-    var markup = await renderer.RenderComponent<FilmTable>(new()
-    {
-        [nameof(FilmTable.Films)] = films,
-        [nameof(FilmTable.Availability)] = availability
-    });
-    await res.DataStarFragment(HtmlWhitespace().Replace(markup, "").Replace("\n", ""), cancel);
-
-    await res.DataStarSignal(new { pending = pendingFilms }, cancel);
-    await res.Body.FlushAsync();
-    app.Logger.LogInformation("Took {Time} to flush current availability state.", sw.Elapsed);
-
+    // do as little as possible between fetching grain state and subscribing to avoid missing events
     if (pendingFilms == 0)
+    {
+        await res.StartEventStream(cancel);
+        await SendFilmTableFragment();
         return res.CompleteAsync();
+    }
 
     var done = new TaskCompletionSource();
     cancel.Register(() => done.SetCanceled(cancel));
@@ -106,7 +96,7 @@ app.MapGet("/film-list/{user}/{list}/events", async (
         pendingFilms--;
         await res.DataStarSignal(new { pending = pendingFilms }, cancel);
 
-        await SendAvailabilityFragment(res, evt.Index, evt.Formats, cancel);
+        await SendAvailabilityFragment(evt.Index, evt.Formats);
 
         await res.Body.FlushAsync(cancel);
 
@@ -119,6 +109,8 @@ app.MapGet("/film-list/{user}/{list}/events", async (
 
     var observerRef = grainFactory.CreateObjectReference<ILetterboxdList.IObserver>(observer);
     await listGrain.Subscribe(observerRef);
+    await res.StartEventStream(cancel);
+    await SendFilmTableFragment();
 
     try
     {
@@ -133,7 +125,7 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     }
     return res.CompleteAsync();
 
-    async Task SendAvailabilityFragment(HttpResponse res, int idx, MediaFormat[] formats, CancellationToken cancel)
+    async Task SendAvailabilityFragment(int idx, MediaFormat[] formats)
     {
         var markup = await renderer.RenderComponent<MediaFormats>(new()
         {
@@ -141,6 +133,18 @@ app.MapGet("/film-list/{user}/{list}/events", async (
             [nameof(MediaFormats.Formats)] = formats
         });
         await res.DataStarFragment(markup, cancel);
+    }
+
+    async Task SendFilmTableFragment()
+    {
+        // start by sending the entire film table in case the client is missing events due to reconnect
+        var markup = await renderer.RenderComponent<FilmTable>(new()
+        {
+            [nameof(FilmTable.Films)] = films,
+            [nameof(FilmTable.Availability)] = availability
+        });
+        await res.DataStarFragment(HtmlWhitespace().Replace(markup, "").Replace("\n", ""), cancel);
+        await res.Body.FlushAsync();
     }
 });
 
