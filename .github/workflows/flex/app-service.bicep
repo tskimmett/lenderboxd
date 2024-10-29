@@ -37,12 +37,56 @@ resource appService 'Microsoft.Web/sites@2021-03-01' = {
           value: appInsightsConnectionString
         }
         {
-          name: 'ORLEANS_AZURE_STORAGE_CONNECTION_STRING'
+          name: 'Orleans__ClusterId'
+          value: 'default'
+        }
+        {
+          name: 'Orleans__Clustering__ProviderType'
+          value: 'AzureTableStorage'
+        }
+        {
+          name: 'Orleans__Clustering__ServiceKey'
+          value: 'tables'
+        }
+        {
+          name: 'Orleans__EnableDistributedTracing'
+          value: 'true'
+        }
+        {
+          name: 'Orleans__Endpoints__GatewayPort'
+          value: '8001'
+        }
+        {
+          name: 'Orleans__Endpoints__SiloPort'
+          value: '8000'
+        }
+        {
+          name: 'Orleans__GrainStorage__Default__ProviderType'
+          value: 'AzureTableStorage'
+        }
+        {
+          name: 'Orleans__GrainStorage__Default__ServiceKey'
+          value: 'tables'
+        }
+        {
+          name: 'Orleans__GrainStorage__PubSubStore__ProviderType'
+          value: 'AzureTableStorage'
+        }
+        {
+          name: 'Orleans__GrainStorage__PubSubStore__ServiceKey'
+          value: 'tables'
+        }
+        {
+          name: 'Orleans__ServiceId'
+          value: 'Lenderboxd'
+        }
+        {
+          name: 'ConnectionStrings__queues'
           value: storageConnectionString
         }
         {
-          name: 'ORLEANS_CLUSTER_ID'
-          value: 'Default'
+          name: 'ConnectionStrings__tables'
+          value: storageConnectionString
         }
       ]
       alwaysOn: true
