@@ -1,7 +1,6 @@
 param appName string
 param location string
 param vnetSubnetId string
-param stagingSubnetId string
 param appInsightsInstrumentationKey string
 param appInsightsConnectionString string
 param storageConnectionString string
