@@ -34,7 +34,6 @@ jobs:
           --parameters \
             location=${{ env.AZURE_RESOURCE_GROUP_LOCATION }} \
             appName=${{ env.UNIQUE_APP_NAME }} \
-          --debug
 
     - name: Webapp deploy
       run: |
