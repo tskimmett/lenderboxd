@@ -67,7 +67,6 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpLogging();
 app.UseHttpsRedirection();
 
-// app.UseMiddleware<ExtensionlessJsMiddleware>();
 app.UseStaticFiles();
 
 app.UseRouting();
