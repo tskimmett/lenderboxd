@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Text.RegularExpressions;
 using Azure.Data.Tables;
 using Azure.Storage.Queues;
@@ -13,8 +14,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddKeyedAzureTableClient("tables");
 builder.AddKeyedAzureQueueClient("queues");
 
-builder.UseOrleans(silo =>
+builder.UseOrleans((Action<ISiloBuilder>)(silo =>
 {
+    TryConfigureSiloEndpoints(silo, builder);
+
     silo.AddAzureQueueStreams("Default", (SiloAzureQueueStreamConfigurator configurator) =>
     {
         configurator.ConfigurePullingAgent(options =>
@@ -32,7 +35,25 @@ builder.UseOrleans(silo =>
             });
         });
     });
-});
+
+	// This configuration is needed when deploying to app service
+    static void TryConfigureSiloEndpoints(ISiloBuilder silo, WebApplicationBuilder builder)
+    {
+        var privateIp = builder.Configuration["WEBSITE_PRIVATE_IP"];
+        if (!string.IsNullOrEmpty(privateIp))
+        {
+            var endpointAddress = IPAddress.Parse(privateIp);
+            var strPorts = builder.Configuration["WEBSITE_PRIVATE_PORTS"]!.Split(',');
+            if (strPorts.Length < 2)
+            {
+                throw new Exception("Insufficient private ports configured.");
+            }
+
+            var (siloPort, gatewayPort) = (int.Parse(strPorts[0]), int.Parse(strPorts[1]));
+            silo.ConfigureEndpoints(endpointAddress, siloPort, gatewayPort, listenOnAnyHostAddress: true);
+        }
+    }
+}));
 
 builder.AddServiceDefaults();
 
