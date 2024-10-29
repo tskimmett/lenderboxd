@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using Azure.Data.Tables;
 using Azure.Storage.Queues;
 using Lenderboxd;
 using Lenderboxd.Web;
@@ -11,10 +12,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddKeyedAzureTableClient("tables");
 builder.AddKeyedAzureQueueClient("queues");
+
 builder.UseOrleans(silo =>
 {
     silo.AddAzureQueueStreams("Default", (SiloAzureQueueStreamConfigurator configurator) =>
     {
+        configurator.ConfigurePullingAgent(options =>
+        {
+            options.Configure(pullingOptions =>
+            {
+                pullingOptions.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(500);
+            });
+        });
         configurator.ConfigureAzureQueue(options =>
         {
             options.Configure<IServiceProvider>((queueOptions, sp) =>
