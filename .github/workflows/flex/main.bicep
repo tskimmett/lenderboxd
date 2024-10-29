@@ -1,7 +1,15 @@
+targetScope = 'subscription'
+
 param appName string
-param location string = resourceGroup().location
+param location string
+
+resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
+  name: 'rg-${appName}'
+  location: location
+}
 
 module storageModule 'storage.bicep' = {
+  scope: rg
   name: 'orleansStorageModule'
   params: {
     name: '${appName}storage'
@@ -10,6 +18,7 @@ module storageModule 'storage.bicep' = {
 }
 
 module logsModule 'logs-and-insights.bicep' = {
+  scope: rg
   name: 'orleansLogModule'
   params: {
     operationalInsightsName: '${appName}-logs'
@@ -18,55 +27,22 @@ module logsModule 'logs-and-insights.bicep' = {
   }
 }
 
-resource vnet 'Microsoft.Network/virtualNetworks@2021-05-01' = {
-  name: '${appName}-vnet'
-  location: location
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        '172.17.0.0/16'
-        '192.168.0.0/16'
-      ]
-    }
-    subnets: [
-      {
-        name: 'default'
-        properties: {
-          addressPrefix: '172.17.0.0/24'
-          delegations: [
-            {
-              name: 'delegation'
-              properties: {
-                serviceName: 'Microsoft.Web/serverFarms'
-              }
-            }
-          ]
-        }
-      }
-      {
-        name: 'staging'
-        properties: {
-          addressPrefix: '192.168.0.0/24'
-          delegations: [
-            {
-              name: 'delegation'
-              properties: {
-                serviceName: 'Microsoft.Web/serverFarms'
-              }
-            }
-          ]
-        }
-      }
-    ]
+module vnet 'network.bicep' = {
+  scope: rg
+  name: 'vnetModule'
+  params: {
+    appName: appName
+    location: location
   }
 }
 
 module siloModule 'app-service.bicep' = {
+  scope: rg
   name: 'orleansSiloModule'
   params: {
     appName: appName
     location: location
-    vnetSubnetId: vnet.properties.subnets[0].id
+    vnetSubnetId: vnet.outputs.subnetId
     appInsightsConnectionString: logsModule.outputs.appInsightsConnectionString
     appInsightsInstrumentationKey: logsModule.outputs.appInsightsInstrumentationKey
     storageConnectionString: storageModule.outputs.connectionString

@@ -4,7 +4,6 @@ on: workflow_dispatch
 
 env:
   UNIQUE_APP_NAME: lenderboxd
-  AZURE_RESOURCE_GROUP_NAME: rg-lenderboxd
   AZURE_RESOURCE_GROUP_LOCATION: eastus
 
 jobs:
@@ -28,8 +27,9 @@ jobs:
     
     - name: Flex bicep
       run: |
-        az deployment group create \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP_NAME }} \
+        az deployment sub create \
+          --name deploy-rg-${{ env.UNIQUE_APP_NAME }} \
+          --location ${{ env.AZURE_RESOURCE_GROUP_LOCATION }} \
           --template-file '.github/workflows/flex/main.bicep' \
           --parameters \
             location=${{ env.AZURE_RESOURCE_GROUP_LOCATION }} \
