@@ -28,7 +28,7 @@ jobs:
     - name: Flex bicep
       run: |
         az deployment sub create \
-          --name deploy-rg-${{ env.UNIQUE_APP_NAME }} \
+          --name deploy-e2-${{ env.UNIQUE_APP_NAME }} \
           --location ${{ env.AZURE_RESOURCE_GROUP_LOCATION }} \
           --template-file '.github/workflows/flex/main.bicep' \
           --parameters \
