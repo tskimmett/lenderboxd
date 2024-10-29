@@ -8,10 +8,13 @@ param storageConnectionString string
 resource appServicePlan 'Microsoft.Web/serverfarms@2021-03-01' = {
   name: '${appName}-plan'
   location: location
-  kind: 'app'
+  kind: 'linux'
   sku: {
     name: 'B1'
     capacity: 1
+  }
+  properties: {
+    reserved: true
   }
 }
 
@@ -24,9 +27,10 @@ resource appService 'Microsoft.Web/sites@2021-03-01' = {
     virtualNetworkSubnetId: vnetSubnetId
     httpsOnly: true
     siteConfig: {
+      linuxFxVersion: 'dotnet|8.0'
+      netFrameworkVersion: 'v8.0'
       vnetPrivatePortsCount: 2
       webSocketsEnabled: true
-      netFrameworkVersion: 'v8.0'
       appSettings: [
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
