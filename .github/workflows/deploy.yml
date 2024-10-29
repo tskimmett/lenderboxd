@@ -4,7 +4,7 @@ on: workflow_dispatch
 
 env:
   UNIQUE_APP_NAME: lenderboxd
-  AZURE_RESOURCE_GROUP_LOCATION: eastus
+  AZURE_RESOURCE_GROUP_LOCATION: eastus2
 
 jobs:
   build-and-deploy:
