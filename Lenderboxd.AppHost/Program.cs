@@ -1,4 +1,5 @@
 ﻿using Azure.ResourceManager.Storage.Models;
+using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -14,6 +15,6 @@ builder.AddProject<Projects.Lenderboxd_Web>("lenderboxd-web")
 	.WithExternalHttpEndpoints()
 	.WithReference(orleans)
 	.WithReference(queues)
-	.WithReplicas(1);
+	.WithReplicas(builder.Environment.IsDevelopment() ? 1 : 0);
 
 builder.Build().Run();
