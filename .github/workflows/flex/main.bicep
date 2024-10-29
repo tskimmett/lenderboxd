@@ -24,7 +24,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2021-05-01' = {
   properties: {
     addressSpace: {
       addressPrefixes: [
-        '172.17.0.0/16'
+        '172.17.0.0/16',
         '192.168.0.0/16'
       ]
     }
@@ -71,6 +71,5 @@ module siloModule 'app-service.bicep' = {
     appInsightsConnectionString: logsModule.outputs.appInsightsConnectionString
     appInsightsInstrumentationKey: logsModule.outputs.appInsightsInstrumentationKey
     storageConnectionString: storageModule.outputs.connectionString
-    storageConnectionStringStaging: storageModule.outputs.connectionString
   }
 }

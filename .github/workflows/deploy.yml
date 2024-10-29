@@ -1,13 +1,10 @@
 name: Deploy to Azure App Service
 
-# on:
-#   push:
-#     branches:
-#     - main
+on: workflow_dispatch
 
 env:
   UNIQUE_APP_NAME: lenderboxd
-  AZURE_RESOURCE_GROUP_NAME: lenderboxd
+  AZURE_RESOURCE_GROUP_NAME: rg-lenderboxd
   AZURE_RESOURCE_GROUP_LOCATION: eastus
 
 jobs:
@@ -17,15 +14,15 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Setup .NET 8.0
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+        dotnet-version: 8.0.x
 
-    - name: .NET publish
-      run: dotnet publish ./LibraryBox.Web/LibraryBox.Web.csproj --configuration Release
+    - name: .NET publish lenderboxd
+      run: dotnet publish ./Lenderboxd.Web/Lenderboxd.Web.csproj --configuration Release
 
     - name: Login to Azure
-      uses: azure/login@v2
+      uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
@@ -34,7 +31,8 @@ jobs:
         az deployment group create \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP_NAME }} \
           --template-file '.github/workflows/flex/main.bicep' \
-          --parameters location=${{ env.AZURE_RESOURCE_GROUP_LOCATION }} \
+          --parameters \
+            location=${{ env.AZURE_RESOURCE_GROUP_LOCATION }} \
             appName=${{ env.UNIQUE_APP_NAME }} \
           --debug
 
@@ -43,12 +41,4 @@ jobs:
         az webapp deploy --name ${{ env.UNIQUE_APP_NAME }} \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP_NAME  }} \
           --clean true --restart true \
-          --type zip --src-path app.zip --debug
-
-    - name: Staging deploy
-      run: |
-        az webapp deploy --name ${{ env.UNIQUE_APP_NAME }} \
-          --slot ${{ env.UNIQUE_APP_NAME }}-staging \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP_NAME  }} \
-          --clean true --restart true \
-          --type zip --src-path app.zip --debug
+          --type zip --src-path silo.zip --debug
