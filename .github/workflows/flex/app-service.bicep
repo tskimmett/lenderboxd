@@ -27,8 +27,7 @@ resource appService 'Microsoft.Web/sites@2021-03-01' = {
     virtualNetworkSubnetId: vnetSubnetId
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'dotnet|8.0'
-      netFrameworkVersion: 'v8.0'
+      linuxFxVersion: 'DOTNETCORE|8.0'
       vnetPrivatePortsCount: 2
       webSocketsEnabled: true
       appSettings: [
