@@ -46,7 +46,7 @@ builder.UseOrleans((Action<ISiloBuilder>)(silo =>
             var strPorts = builder.Configuration["WEBSITE_PRIVATE_PORTS"]!.Split(',');
             if (strPorts.Length < 2)
             {
-                throw new Exception("Insufficient private ports configured.");
+                throw new Exception($"Insufficient private ports configured: {builder.Configuration["WEBSITE_PRIVATE_PORTS"]}");
             }
 
             var (siloPort, gatewayPort) = (int.Parse(strPorts[0]), int.Parse(strPorts[1]));
@@ -138,8 +138,8 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     });
 
     var observerRef = grainFactory.CreateObjectReference<ILetterboxdList.IObserver>(observer);
-    await listGrain.Subscribe(observerRef);
     await res.StartEventStream(cancel);
+    await listGrain.Subscribe(observerRef);
     await SendFilmTableFragment();
 
     try
