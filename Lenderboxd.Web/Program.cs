@@ -138,6 +138,10 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     });
 
     var observerRef = grainFactory.CreateObjectReference<ILetterboxdList.IObserver>(observer);
+
+    // prevent GC?
+    LetterboxdListObserver.Cache.Add(observer);
+
     await res.StartEventStream(cancel);
     await listGrain.Subscribe(observerRef);
     await SendFilmTableFragment();
@@ -149,6 +153,7 @@ app.MapGet("/film-list/{user}/{list}/events", async (
     catch (OperationCanceledException) { }
     finally
     {
+        LetterboxdListObserver.Cache.Remove(observer);
         app.Logger.LogInformation("Closing event stream for {User}/{List}", user, list);
         await listGrain.Unsubscribe(observerRef);
         await res.Body.FlushAsync(cancel);
@@ -182,6 +187,8 @@ app.Run();
 
 class LetterboxdListObserver : ILetterboxdList.IObserver
 {
+    public static HashSet<LetterboxdListObserver> Cache { get; } = [];
+
     readonly Func<FilmAvailabilityEvent, Task> _handler;
 
     public LetterboxdListObserver(Func<FilmAvailabilityEvent, Task> handler)
