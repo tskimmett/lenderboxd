@@ -130,7 +130,7 @@ public class LetterboxdList : Grain, ILetterboxdList
 				await Task.WhenAll(
 					_state.State.Films
 						.Select(f => f.Title)
-						.BatchIEnumerable(25)
+						.BatchIEnumerable(5)
 						.Select(batch => requestStream.OnNextBatchAsync(batch))
 				);
 				_logger.LogDebug("Queued requests in {Time}", timer.Elapsed);
