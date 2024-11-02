@@ -1,5 +1,6 @@
 namespace Microsoft.Extensions.Hosting;
 
+using System.Diagnostics;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -53,13 +54,12 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource("Microsoft.Orleans.Runtime");
+                // tracing.AddSource("Microsoft.Orleans.Runtime");
                 tracing.AddSource("Microsoft.Orleans.Application");
 
                 tracing.AddAspNetCoreInstrumentation()
-                    // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
-                    //.AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation();
+                tracing.AddProcessor(new ActivityFilter());
             });
 
         builder.AddOpenTelemetryExporters();
@@ -110,5 +110,20 @@ public static class Extensions
         }
 
         return app;
+    }
+
+    class ActivityFilter : BaseProcessor<Activity>
+    {
+        public override void OnEnd(Activity data)
+        {
+            if (data.Kind == ActivityKind.Client
+                && data.Parent?.GetTagItem("az.namespace") as string == "Microsoft.Storage")
+            {
+                data.IsAllDataRequested = false;
+                if (data.Parent != null)
+                    data.Parent.IsAllDataRequested = false;
+            }
+            base.OnEnd(data);
+        }
     }
 }
