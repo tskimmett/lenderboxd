@@ -65,7 +65,7 @@ public class LetterboxdScraper
 				.ToList();
 
 			if (films.Count == 0)
-				logger.LogCritical("No films found on page, likely Letterboxd throttling");
+				logger.LogError("No films found on page, likely Letterboxd throttling");
 
 			return films;
 		}

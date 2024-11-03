@@ -178,9 +178,7 @@ public class LetterboxdList : Grain, ILetterboxdList
 
 		if (notifications.Count > 0)
 		{
-			_logger.LogCritical("{List} awaiting observer notification tasks ({Count})", this, notifications.Count);
 			await Task.WhenAll([_state.WriteStateAsync(), .. notifications]);
-			_logger.LogCritical("{List} completed observer notifications!)", this);
 			if (_state.State.AvailabilityResults!.All(r => r is not null) && _state.State.SearchResultSubscriptions.Count > 0)
 			{
 				await Task.WhenAll(_state.State.SearchResultSubscriptions.Select(sub =>
