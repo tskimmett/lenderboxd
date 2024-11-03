@@ -9,7 +9,6 @@
     <PackageReference Include="Azure.Identity" Version="1.13.1" />
     <PackageReference Include="Aspire.Azure.Data.Tables" Version="8.2.2" />
     <PackageReference Include="Aspire.Azure.Storage.Queues" Version="8.2.2" />
-    <PackageReference Include="Azure.Storage.Queues" Version="12.20.1" />
     <PackageReference Include="Microsoft.Orleans.Clustering.AzureStorage" Version="8.2.0" />
     <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="8.2.0" />
     <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="8.2.0" />

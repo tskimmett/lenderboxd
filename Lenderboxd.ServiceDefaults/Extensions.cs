@@ -119,11 +119,19 @@ public static class Extensions
             if (data.Kind == ActivityKind.Client
                 && data.Parent?.GetTagItem("az.namespace") as string == "Microsoft.Storage")
             {
-                data.IsAllDataRequested = false;
+                IgnoreActivity(data);
                 if (data.Parent != null)
-                    data.Parent.IsAllDataRequested = false;
+                {
+                    IgnoreActivity(data.Parent);
+                }
             }
             base.OnEnd(data);
+        }
+
+        static void IgnoreActivity(Activity data)
+        {
+            data.IsAllDataRequested = false;
+            data.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;
         }
     }
 }
