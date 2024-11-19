@@ -28,5 +28,5 @@
   <Target Name="ZipPublishOutput" AfterTargets="Publish">
     <Delete Files="$(ProjectDir)\..\lenderboxd.zip" />
     <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(ProjectDir)\..\lenderboxd.zip" />
-</Target>
+  </Target>
 </Project>
