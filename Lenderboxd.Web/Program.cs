@@ -8,33 +8,23 @@ using Lenderboxd.Web;
 using Lenderboxd.Web.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.ResponseCompression;
+using Orleans.Clustering.FoundationDb;
+using Orleans.Persistence.FoundationDb;
+using Orleans.Streaming.FoundationDb;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddKeyedAzureTableClient("tables");
-builder.AddKeyedAzureQueueClient("queues");
+builder.AddFoundationDb("fdb");
 
 builder.UseOrleans((Action<ISiloBuilder>)(silo =>
 {
     TryConfigureSiloEndpoints(silo, builder);
 
-    silo.AddAzureQueueStreams("Default", (SiloAzureQueueStreamConfigurator configurator) =>
-    {
-        configurator.ConfigurePullingAgent(options =>
-        {
-            options.Configure(pullingOptions =>
-            {
-                pullingOptions.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(500);
-            });
-        });
-        configurator.ConfigureAzureQueue(options =>
-        {
-            options.Configure<IServiceProvider>((queueOptions, sp) =>
-            {
-                queueOptions.QueueServiceClient = sp.GetKeyedService<QueueServiceClient>("queues");
-            });
-        });
-    });
+    // todo: create WithClustering()/WithGrainStorage() extensions for fdb+aspire?
+    silo.UseFdbClustering();
+    silo.AddFdbGrainStorage("Default");
+    silo.AddFdbGrainStorage("PubSubStore");
+    silo.AddFdbStreams("Default");
 
 	// This configuration is needed when deploying to app service
     static void TryConfigureSiloEndpoints(ISiloBuilder silo, WebApplicationBuilder builder)

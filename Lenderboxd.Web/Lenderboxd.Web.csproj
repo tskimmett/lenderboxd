@@ -8,10 +8,11 @@
     <PackageReference Include="Azure.Identity" />
     <PackageReference Include="Aspire.Azure.Data.Tables" />
     <PackageReference Include="Aspire.Azure.Storage.Queues" />
-    <PackageReference Include="Microsoft.Orleans.Clustering.AzureStorage" />
-    <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" />
-    <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" />
+    <PackageReference Include="FoundationDB.Aspire" />
     <PackageReference Include="Microsoft.Orleans.Server" />
+    <PackageReference Include="Orleans.Clustering.FoundationDb" />
+    <PackageReference Include="Orleans.Persistence.FoundationDb" />
+    <PackageReference Include="Orleans.Streaming.FoundationDb" />
     <PackageReference Include="System.Threading.RateLimiting" />
   </ItemGroup>
   <ItemGroup>
@@ -21,6 +22,14 @@
   <ItemGroup>
     <Folder Include="wwwroot/img/" />
   </ItemGroup>
+<!--  <ItemGroup>-->
+<!--    <Reference Include="Orleans.Streaming.FoundationDb">-->
+<!--      <HintPath>..\..\orleans-foundationdb\Orleans.Streaming.FoundationDb\bin\Debug\net9.0\Orleans.Streaming.FoundationDb.dll</HintPath>-->
+<!--    </Reference>-->
+<!--    <Reference Include="Orleans.Persistence.FoundationDb">-->
+<!--      <HintPath>..\..\orleans-foundationdb\Orleans.Persistence.FoundationDb\bin\Debug\net9.0\Orleans.Persistence.FoundationDb.dll</HintPath>-->
+<!--    </Reference>-->
+<!--  </ItemGroup>-->
   <Target Name="ZipPublishOutput" AfterTargets="Publish">
     <Delete Files="$(ProjectDir)\..\lenderboxd.zip" />
     <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(ProjectDir)\..\lenderboxd.zip" />

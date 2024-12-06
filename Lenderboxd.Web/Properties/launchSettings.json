@@ -7,7 +7,10 @@
       "launchBrowser": true,
       "applicationUrl": "https://localhost:5001/",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "DOTNET_DASHBOARD_OTLP_ENDPOINT_URL": "https://localhost:21289",
+        "DOTNET_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22067"
       }
     }
   }

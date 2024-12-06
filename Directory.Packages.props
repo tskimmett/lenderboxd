@@ -16,20 +16,22 @@
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.2.0" />
     <PackageVersion Include="Azure.ResourceManager.Storage" Version="1.3.0" />
     <PackageVersion Include="DotNext" Version="5.14.0" />
+    <PackageVersion Include="FoundationDB.Aspire" Version="7.3.0-preview2" />
+    <PackageVersion Include="FoundationDB.Aspire.Hosting" Version="7.3.0-preview2" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.Orleans.Clustering.AzureStorage" Version="8.2.0" />
-    <PackageVersion Include="Microsoft.Orleans.Persistence.AzureStorage" Version="8.2.0" />
-    <PackageVersion Include="Microsoft.Orleans.Server" Version="8.2.0" />
-    <PackageVersion Include="Microsoft.Orleans.Streaming" Version="8.2.0" />
-    <PackageVersion Include="Microsoft.Orleans.Streaming.AzureStorage" Version="8.2.0" />
-    <PackageVersion Include="Microsoft.Orleans.Transactions" Version="8.2.0" />
+    <PackageVersion Include="Microsoft.Orleans.Server" Version="9.0.1" />
+    <PackageVersion Include="Microsoft.Orleans.Transactions" Version="9.0.1" />
+    <PackageVersion Include="Microsoft.Orleans.Streaming" Version="9.0.1" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.9.0-beta.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.9.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.9.0" />
-    <PackageVersion Include="System.Threading.RateLimiting" Version="8.0.0" />
+    <PackageVersion Include="Orleans.Clustering.FoundationDb" Version="0.1.3" />
+    <PackageVersion Include="Orleans.Persistence.FoundationDb" Version="0.1.3" />
+    <PackageVersion Include="Orleans.Streaming.FoundationDb" Version="0.1.3" />
+    <PackageVersion Include="System.Threading.RateLimiting" Version="9.0.0" />
   </ItemGroup>
 </Project>
