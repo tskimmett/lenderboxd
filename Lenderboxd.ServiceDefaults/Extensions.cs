@@ -103,10 +103,7 @@ public static class Extensions
             app.MapHealthChecks("/health");
 
             // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            app.MapHealthChecks("/alive", new HealthCheckOptions
-            {
-                Predicate = r => r.Tags.Contains("live")
-            });
+            app.MapHealthChecks("/alive", new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") });
         }
 
         return app;
@@ -116,16 +113,19 @@ public static class Extensions
     {
         public override void OnEnd(Activity data)
         {
-            if (data.Kind == ActivityKind.Client
-                && data.Parent?.GetTagItem("az.namespace") as string == "Microsoft.Storage")
+            if (IsQueueReceiveActivity(data))
             {
                 IgnoreActivity(data);
                 if (data.Parent != null)
-                {
                     IgnoreActivity(data.Parent);
-                }
             }
+
             base.OnEnd(data);
+        }
+
+        static bool IsQueueReceiveActivity(Activity? data)
+        {
+            return data is { Kind: ActivityKind.Client, DisplayName: "FdbQueueReceiver::GetQueueMessagesAsync" };
         }
 
         static void IgnoreActivity(Activity data)
